@@ -26,8 +26,8 @@
 //! regsvr32 /u hangul_ime.dll
 //! ```
 
-use windows::core::{w, Result, PCWSTR};
-use windows::Win32::Foundation::MAX_PATH;
+use windows::core::{Result, PCWSTR};
+use windows::Win32::Foundation::{ERROR_SUCCESS, MAX_PATH, WIN32_ERROR};
 use windows::Win32::System::LibraryLoader::GetModuleFileNameW;
 use windows::Win32::System::Registry::{
     RegCreateKeyExW, RegDeleteTreeW, RegSetValueExW,
@@ -36,6 +36,15 @@ use windows::Win32::System::Registry::{
 
 use crate::com::dll_module;
 use crate::guid;
+
+/// WIN32_ERRORをResult<()>に変換する。
+fn win32_error_to_result(err: WIN32_ERROR) -> Result<()> {
+    if err == ERROR_SUCCESS {
+        Ok(())
+    } else {
+        Err(windows::core::Error::from(err.to_hresult()))
+    }
+}
 
 /// DLLをレジストリに登録する。
 ///
@@ -88,7 +97,8 @@ pub fn unregister_server() -> Result<()> {
         let wide_path: Vec<u16> = clsid_key_path.encode_utf16().chain(Some(0)).collect();
 
         // サブキーを含めて全て削除。
-        RegDeleteTreeW(HKEY_CLASSES_ROOT, PCWSTR(wide_path.as_ptr()))?;
+        let result = RegDeleteTreeW(HKEY_CLASSES_ROOT, PCWSTR(wide_path.as_ptr()));
+        win32_error_to_result(result)?;
     }
 
     Ok(())
@@ -101,7 +111,7 @@ pub fn unregister_server() -> Result<()> {
 unsafe fn get_dll_path() -> Result<String> {
     let hmodule = dll_module::get_module_handle();
     let mut path_buf = [0u16; MAX_PATH as usize];
-    let len = GetModuleFileNameW(Some(hmodule.into()), &mut path_buf);
+    let len = GetModuleFileNameW(hmodule, &mut path_buf);
 
     if len == 0 {
         return Err(windows::core::Error::from_win32());
@@ -115,7 +125,7 @@ unsafe fn create_reg_key(parent: HKEY, subkey: &str) -> Result<HKEY> {
     let wide_subkey: Vec<u16> = subkey.encode_utf16().chain(Some(0)).collect();
     let mut hkey = HKEY::default();
 
-    RegCreateKeyExW(
+    let result = RegCreateKeyExW(
         parent,
         PCWSTR(wide_subkey.as_ptr()),
         0,
@@ -125,7 +135,8 @@ unsafe fn create_reg_key(parent: HKEY, subkey: &str) -> Result<HKEY> {
         None,
         &mut hkey,
         None,
-    )?;
+    );
+    win32_error_to_result(result)?;
 
     Ok(hkey)
 }
@@ -149,13 +160,14 @@ unsafe fn set_reg_string_value(
         .map(|n| PCWSTR(n.as_ptr()))
         .unwrap_or(PCWSTR::null());
 
-    RegSetValueExW(
+    let result = RegSetValueExW(
         *hkey,
         name_pcwstr,
         0,
         REG_SZ,
         Some(value_bytes),
-    )?;
+    );
+    win32_error_to_result(result)?;
 
     Ok(())
 }

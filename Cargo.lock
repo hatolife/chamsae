@@ -111,6 +111,7 @@ dependencies = [
  "anyhow",
  "clap",
  "windows",
+ "windows-core",
 ]
 
 [[package]]

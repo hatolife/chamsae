@@ -11,9 +11,9 @@
 //! 4. COMランタイムがIClassFactory::CreateInstanceを呼ぶ
 //! 5. ClassFactoryがTextServiceオブジェクトを作成して返す
 
-use windows::core::{implement, IUnknown, Interface, GUID};
+use windows::core::{implement, IUnknown, GUID};
 use windows::Win32::Foundation::{BOOL, CLASS_E_NOAGGREGATION, E_NOINTERFACE};
-use windows::Win32::System::Com::IClassFactory;
+use windows::Win32::System::Com::{IClassFactory, IClassFactory_Impl};
 
 use super::dll_module;
 
@@ -54,7 +54,7 @@ impl IClassFactory_Impl for ClassFactory_Impl {
     fn CreateInstance(
         &self,
         punkouter: Option<&IUnknown>,
-        riid: *const GUID,
+        _riid: *const GUID,
         ppvobject: *mut *mut core::ffi::c_void,
     ) -> windows::core::Result<()> {
         unsafe {

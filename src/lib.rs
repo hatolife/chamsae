@@ -28,10 +28,9 @@ extern "system" fn DllMain(
     reason: u32,
     _reserved: *mut core::ffi::c_void,
 ) -> windows::Win32::Foundation::BOOL {
-    use windows::Win32::Foundation::{BOOL, TRUE, FALSE};
+    use windows::Win32::Foundation::TRUE;
 
     const DLL_PROCESS_ATTACH: u32 = 1;
-    const DLL_PROCESS_DETACH: u32 = 0;
 
     match reason {
         DLL_PROCESS_ATTACH => {
@@ -44,9 +43,6 @@ extern "system" fn DllMain(
                     .ok();
             }
 
-            TRUE
-        }
-        DLL_PROCESS_DETACH => {
             TRUE
         }
         _ => TRUE,
@@ -65,7 +61,6 @@ extern "system" fn DllGetClassObject(
     ppv: *mut *mut core::ffi::c_void,
 ) -> windows::core::HRESULT {
     use windows::core::Interface;
-    use windows::Win32::System::Com::IClassFactory;
 
     unsafe {
         if ppv.is_null() {
