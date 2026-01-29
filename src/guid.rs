@@ -30,8 +30,18 @@ pub const IME_DISPLAY_NAME: &str = "Chamsae Hangul IME";
 /// IMEの説明。
 pub const IME_DESCRIPTION: &str = "Chamsae - Romanji to Hangul Input Method Editor";
 
+/// Chamsae日本語プロファイルのGUID。
+///
+/// 日本語言語から切り替えて使うためのプロファイル。
+pub const GUID_CHAMSAE_PROFILE_JA: GUID = GUID::from_u128(
+    0xB3D5F7A9_2C4E_6B8D_AF10_3E5C7B9D1F20
+);
+
 /// 韓国語のLANGID。
 pub const LANGID_KOREAN: u16 = 0x0412;
+
+/// 日本語のLANGID。
+pub const LANGID_JAPANESE: u16 = 0x0411;
 
 #[cfg(test)]
 mod tests {
