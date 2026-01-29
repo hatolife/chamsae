@@ -1,10 +1,8 @@
 //! ハングル変換CLIツール。
 
-mod hangul;
-
 use anyhow::Result;
 use clap::Parser;
-use hangul::HangulConverter;
+use hangul_ime::hangul::HangulConverter;
 
 /// コマンドライン引数。
 #[derive(Parser, Debug)]
