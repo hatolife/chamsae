@@ -1,0 +1,13 @@
+[build]
+# Podmanを明示的に指定
+default-target = "x86_64-pc-windows-gnu"
+
+[build.env]
+passthrough = [
+    "RUST_BACKTRACE",
+]
+
+[target.x86_64-pc-windows-gnu]
+# ボリュームマウントを無効化し、コンテナ内で完結させる
+xargo = false
+
