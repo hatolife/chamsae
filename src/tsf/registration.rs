@@ -18,14 +18,17 @@ use windows::Win32::UI::TextServices::{
     ITfCategoryMgr, ITfInputProcessorProfileMgr, ITfInputProcessorProfiles,
 };
 
+use crate::config::Config;
 use crate::guid;
 
 /// TSFプロファイルとカテゴリを登録する。
 ///
+/// 設定ファイルの `languages` に基づき、有効な言語プロファイルのみ登録する。
+///
 /// 1. テキストサービスをCLSIDで登録
-/// 2. ITfInputProcessorProfileMgrで韓国語・日本語の言語プロファイルを追加
+/// 2. ITfInputProcessorProfileMgrで有効な言語プロファイルを追加
 /// 3. キーボードTIPカテゴリに登録
-pub fn register_tsf_profile() -> Result<()> {
+pub fn register_tsf_profile(config: &Config) -> Result<()> {
     unsafe {
         // テキストサービスの登録。
         let profiles: ITfInputProcessorProfiles = CoCreateInstance(
@@ -42,34 +45,38 @@ pub fn register_tsf_profile() -> Result<()> {
 
         let desc: Vec<u16> = guid::IME_DISPLAY_NAME.encode_utf16().collect();
 
-        // 韓国語言語プロファイルの追加。(現在は日本語のみ登録)
-        // profile_mgr.RegisterProfile(
-        //     &guid::CLSID_CHAMSAE_TEXT_SERVICE,
-        //     guid::LANGID_KOREAN,
-        //     &guid::GUID_CHAMSAE_PROFILE,
-        //     &desc,
-        //     &[],
-        //     0,
-        //     HKL::default(),
-        //     0,
-        //     TRUE,
-        //     0,
-        // )?;
+        // 韓国語言語プロファイルの追加。
+        if config.languages.korean {
+            profile_mgr.RegisterProfile(
+                &guid::CLSID_CHAMSAE_TEXT_SERVICE,
+                guid::LANGID_KOREAN,
+                &guid::GUID_CHAMSAE_PROFILE,
+                &desc,
+                &[],
+                0,
+                HKL::default(),
+                0,
+                TRUE,
+                0,
+            )?;
+        }
 
         // 日本語言語プロファイルの追加。
         // 日本語入力の状態からChamsaeに切り替えられるようにする。
-        profile_mgr.RegisterProfile(
-            &guid::CLSID_CHAMSAE_TEXT_SERVICE,
-            guid::LANGID_JAPANESE,
-            &guid::GUID_CHAMSAE_PROFILE_JA,
-            &desc,
-            &[],
-            0,
-            HKL::default(),
-            0,
-            TRUE,
-            0,
-        )?;
+        if config.languages.japanese {
+            profile_mgr.RegisterProfile(
+                &guid::CLSID_CHAMSAE_TEXT_SERVICE,
+                guid::LANGID_JAPANESE,
+                &guid::GUID_CHAMSAE_PROFILE_JA,
+                &desc,
+                &[],
+                0,
+                HKL::default(),
+                0,
+                TRUE,
+                0,
+            )?;
+        }
 
         // キーボードTIPカテゴリに登録。
         let category_mgr: ITfCategoryMgr = CoCreateInstance(

@@ -14,6 +14,7 @@ use std::sync::{Arc, Mutex};
 
 use windows::core::{implement, Interface, IUnknownImpl, Result, GUID};
 use windows::Win32::Foundation::{BOOL, FALSE, LPARAM, TRUE, WPARAM};
+use windows::Win32::UI::Input::KeyboardAndMouse::GetKeyState;
 use windows::Win32::UI::TextServices::{
     ITfComposition, ITfCompositionSink, ITfCompositionSink_Impl, ITfContext,
     ITfEditSession, ITfKeyEventSink, ITfKeyEventSink_Impl, ITfKeystrokeMgr,
@@ -23,6 +24,7 @@ use windows::Win32::UI::TextServices::{
 };
 
 use crate::com::dll_module;
+use crate::config::Config;
 use crate::hangul::HangulConverter;
 use crate::tsf::edit_session::{EditAction, EditSession};
 use crate::tsf::key_handler;
@@ -43,6 +45,10 @@ pub struct TextService {
     composition: Arc<Mutex<Option<ITfComposition>>>,
     /// ハングル変換器。
     converter: HangulConverter,
+    /// IME設定。
+    config: Config,
+    /// IME有効状態。falseの場合はすべてのキーをパススルーする。
+    enabled: Cell<bool>,
 }
 
 impl TextService {
@@ -55,6 +61,8 @@ impl TextService {
             roman_buffer: RefCell::new(String::new()),
             composition: Arc::new(Mutex::new(None)),
             converter: HangulConverter::new(),
+            config: Config::load_from_dll(),
+            enabled: Cell::new(true),
         }
     }
 }
@@ -88,6 +96,7 @@ impl ITfTextInputProcessor_Impl for TextService_Impl {
         *self.composition.lock().unwrap() = None;
         *self.thread_mgr.borrow_mut() = None;
         self.client_id.set(0);
+        self.enabled.set(true);
 
         Ok(())
     }
@@ -136,11 +145,35 @@ impl ITfKeyEventSink_Impl for TextService_Impl {
     ) -> Result<BOOL> {
         let vk = wparam.0 as u32;
 
+        // トグルキー (Shift+Space) は常に横取りする。
+        if self.is_toggle_key(vk) {
+            return Ok(TRUE);
+        }
+
+        // IME無効時はすべてのキーをパススルー。
+        if !self.enabled.get() {
+            return Ok(FALSE);
+        }
+
+        // Ctrl/Alt押下中はハングルキーを捕捉しない。
+        if self.is_modifier_held() {
+            // バッファ非空なら自動確定用に横取り。
+            if !self.roman_buffer.borrow().is_empty() {
+                return Ok(TRUE);
+            }
+            return Ok(FALSE);
+        }
+
         if key_handler::is_hangul_key(vk) {
             return Ok(TRUE);
         }
 
         if key_handler::is_control_key(vk) && !self.roman_buffer.borrow().is_empty() {
+            return Ok(TRUE);
+        }
+
+        // バッファ非空時、未対応キーも自動確定用に横取り。
+        if !self.roman_buffer.borrow().is_empty() {
             return Ok(TRUE);
         }
 
@@ -167,6 +200,32 @@ impl ITfKeyEventSink_Impl for TextService_Impl {
             Some(c) => c,
             None => return Ok(FALSE),
         };
+
+        // トグルキー (Shift+Space) でIMEのON/OFFを切り替え。
+        if self.is_toggle_key(vk) {
+            // コンポジション中なら確定してからトグル。
+            if !self.roman_buffer.borrow().is_empty() {
+                self.request_edit_session(context, EditAction::Commit)?;
+                self.roman_buffer.borrow_mut().clear();
+            }
+            self.enabled.set(!self.enabled.get());
+            return Ok(TRUE);
+        }
+
+        // IME無効時はすべてのキーをパススルー。
+        if !self.enabled.get() {
+            return Ok(FALSE);
+        }
+
+        // Ctrl/Alt押下中はハングルキーを処理しない。
+        if self.is_modifier_held() {
+            // バッファ非空なら自動確定してパススルー。
+            if !self.roman_buffer.borrow().is_empty() {
+                self.request_edit_session(context, EditAction::Commit)?;
+                self.roman_buffer.borrow_mut().clear();
+            }
+            return Ok(FALSE);
+        }
 
         // ローマ字キー → バッファに追加してコンポジション更新。
         if let Some(ch) = key_handler::vk_to_char(vk) {
@@ -198,7 +257,12 @@ impl ITfKeyEventSink_Impl for TextService_Impl {
                     self.roman_buffer.borrow_mut().push(' ');
                     self.update_composition(context)?;
                 }
-                _ => return Ok(FALSE),
+                // 未対応キー → 自動確定してパススルー。
+                _ => {
+                    self.request_edit_session(context, EditAction::Commit)?;
+                    self.roman_buffer.borrow_mut().clear();
+                    return Ok(FALSE);
+                }
             }
             return Ok(TRUE);
         }
@@ -241,6 +305,26 @@ impl ITfCompositionSink_Impl for TextService_Impl {
 // === ヘルパーメソッド ===
 
 impl TextService_Impl {
+    /// 設定されたトグルキーか判定する。
+    fn is_toggle_key(&self, vk: u32) -> bool {
+        let tk = &self.config.toggle_key;
+        if vk != tk.vk {
+            return false;
+        }
+        let shift_held = unsafe { GetKeyState(key_handler::VK_SHIFT as i32) } < 0;
+        let ctrl_held = unsafe { GetKeyState(key_handler::VK_CONTROL as i32) } < 0;
+        let alt_held = unsafe { GetKeyState(key_handler::VK_MENU as i32) } < 0;
+        shift_held == tk.shift && ctrl_held == tk.ctrl && alt_held == tk.alt
+    }
+
+    /// Ctrl/Altが押下されているか判定する。
+    fn is_modifier_held(&self) -> bool {
+        unsafe {
+            GetKeyState(key_handler::VK_CONTROL as i32) < 0
+                || GetKeyState(key_handler::VK_MENU as i32) < 0
+        }
+    }
+
     /// バッファの内容をハングルに変換してコンポジションを更新する。
     fn update_composition(&self, context: &ITfContext) -> Result<()> {
         let buffer = self.roman_buffer.borrow();

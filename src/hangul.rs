@@ -940,6 +940,91 @@ mod tests {
 		assert_eq!(c.convert("gwa hag"), "과학");             // 科学
 	}
 
+	// ==================== リアルタイム変換シミュレーションテスト ====================
+
+	/// IMEのリアルタイム入力をシミュレートする。
+	/// 1文字ずつバッファに追加し、各段階の変換結果を返す。
+	fn simulate_typing(input: &str) -> Vec<String> {
+		let c = HangulConverter::new();
+		let mut buffer = String::new();
+		let mut results = Vec::new();
+		for ch in input.chars() {
+			buffer.push(ch);
+			results.push(c.convert(&buffer));
+		}
+		results
+	}
+
+	#[test]
+	fn test_realtime_han() {
+		// "han"の入力過程: h→ha→han
+		let results = simulate_typing("han");
+		assert_eq!(results, vec![
+			"h".to_string(),     // h: 子音のみ
+			"하".to_string(),    // ha: 하
+			"한".to_string(),    // han: 한 (n=終声)
+		]);
+	}
+
+	#[test]
+	fn test_realtime_hangu_liaison() {
+		// "hangu"の入力過程: 連音化の確認
+		// h→ha→han→hang→hangu
+		let results = simulate_typing("hangu");
+		assert_eq!(results, vec![
+			"h".to_string(),     // h: 子音のみ
+			"하".to_string(),    // ha: 하
+			"한".to_string(),    // han: 한 (n=終声)
+			"항".to_string(),    // hang: 항 (ng=終声)
+			"한구".to_string(),  // hangu: 한구 (uが母音→ng分割→n終声+g次音節初声)
+		]);
+	}
+
+	#[test]
+	fn test_realtime_hangug_with_space() {
+		// "han gug"の入力過程: スペース区切りでの音節境界
+		let results = simulate_typing("han gug");
+		assert_eq!(results, vec![
+			"h".to_string(),     // h
+			"하".to_string(),    // ha
+			"한".to_string(),    // han
+			"한".to_string(),    // "han " (スペース=区切り)
+			"한g".to_string(),   // "han g" (子音のみ)
+			"한구".to_string(),  // "han gu"
+			"한국".to_string(),  // "han gug"
+		]);
+	}
+
+	#[test]
+	fn test_realtime_gug_eo_liaison() {
+		// "gugeo"の入力過程: 区切りなしの連音化
+		let results = simulate_typing("gugeo");
+		assert_eq!(results, vec![
+			"g".to_string(),     // g: 子音のみ
+			"구".to_string(),    // gu: 구
+			"국".to_string(),    // gug: 국 (g=終声)
+			"구게".to_string(),  // guge: g→次音節初声, e=에
+			"구거".to_string(),  // gugeo: eo=어に確定
+		]);
+	}
+
+	#[test]
+	fn test_realtime_backspace_simulation() {
+		// バッファからのpopをシミュレート (BackSpace)
+		let c = HangulConverter::new();
+		let mut buffer = String::from("han");
+		assert_eq!(c.convert(&buffer), "한");
+
+		buffer.pop(); // "ha"
+		assert_eq!(c.convert(&buffer), "하");
+
+		buffer.pop(); // "h"
+		assert_eq!(c.convert(&buffer), "h");
+
+		buffer.pop(); // ""
+		assert_eq!(c.convert(&buffer), "");
+	}
+
 	#[test]
 	fn test_complex_sentences() {
 		let c = HangulConverter::new();

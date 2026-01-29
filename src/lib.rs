@@ -4,6 +4,7 @@
 //! Phase 3: TSF IME実装。
 
 pub mod hangul;
+pub mod config;
 
 // Windows専用モジュール。
 #[cfg(windows)]

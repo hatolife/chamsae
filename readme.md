@@ -8,26 +8,34 @@ Rust学習を兼ねた自作IMEプロジェクト。
 
 | 項目 | 状態 |
 |------|------|
-| バージョン | v0.3.0 (開発中) |
-| フェーズ | Phase 3 完了 |
-| テスト | 47テスト通過 |
+| バージョン | v0.4.0 (開発中) |
+| フェーズ | Phase 4 進行中 |
+| テスト | 62テスト通過 |
 | 対応OS | CLI: Windows/Linux, DLL/IME: Windows |
 
 ## クイックスタート
 
 ```bash
-# ビルド
-cargo build --release
+# リリースビルド (テスト → ビルド → build/ にコピー)
+make release
 
 # 単一変換
-./target/release/chamsae -i "an nyeong ha se yo"
+./build/chamsae.exe -i "an nyeong ha se yo"
 # 出力: 안녕하세요
 
+# 標準入力から変換 (引数なしで起動)
+echo "han gug eo" | ./build/chamsae.exe
+# 出力: 한국어
+
 # インタラクティブモード
-./target/release/chamsae -I
+./build/chamsae.exe -I
 > han gug eo
   → 한국어
 > exit
+
+# 設定ファイルのテンプレート生成
+./build/chamsae.exe -t
+# カレントディレクトリに chamsae.json を生成
 ```
 
 ## 入力規則
@@ -37,7 +45,7 @@ cargo build --release
 | 半角スペース1つ | 音節区切り | `han gug` → 한국 |
 | 半角スペース2つ | 実際のスペース | `an nyeong  ha se yo` → 안녕 하세요 |
 
-詳細は [spec_v0.1.0.md](./spec_v0.1.0.md) / [spec_v0.2.0.md](./spec_v0.2.0.md) / [spec_v0.3.0.md](./spec_v0.3.0.md) を参照。
+詳細は [spec_v0.1.0.md](./spec_v0.1.0.md) / [spec_v0.2.0.md](./spec_v0.2.0.md) / [spec_v0.3.0.md](./spec_v0.3.0.md) / [spec_v0.4.0.md](./spec_v0.4.0.md) を参照。
 
 ---
 
@@ -70,16 +78,18 @@ cargo build --release
 | 3.4 | 変換ロジック統合 | ✅ |
 | 3.5 | コンポジション下線表示 | ✅ |
 
-### Phase 4: リアルタイム変換 🔜 次
+### Phase 4: リアルタイム変換・設定 🔜 進行中
 
-| マイルストーン | 内容 | 予定 |
+| マイルストーン | 内容 | 状態 |
 |---------------|------|------|
-| 4.1 | 終声の自動移動 (連音化) | - |
-| 4.2 | IME ON/OFF トグル | - |
-| 4.3 | 非対応キー入力時の自動確定 | - |
-| 4.4 | エッジケース修正 | - |
+| 4.1 | 終声の自動移動 (連音化) | ✅ |
+| 4.2 | IME ON/OFF トグル | ✅ |
+| 4.3 | 非対応キー入力時の自動確定 | ✅ |
+| 4.4 | エッジケース修正 | ✅ |
+| 4.5 | 設定ファイル (トグルキー変更) | ✅ |
+| 4.6 | 言語プロファイル設定 (日本語/韓国語) | ✅ |
 
-**目標**: 韓国IMEと同様のリアルタイム再構成
+**目標**: 韓国IMEと同様のリアルタイム再構成 + ユーザー設定
 
 ### Phase 5: 改善・拡張
 
@@ -97,6 +107,7 @@ cargo build --release
 
 | バージョン | 日付 | 内容 |
 |-----------|------|------|
+| v0.4.0 | 2026-01-30 | IMEトグル, 設定ファイル, 言語プロファイル設定, 連音化 |
 | v0.3.0 | 2026-01-30 | TSF IME実装, キーイベント処理, コンポジション |
 | v0.2.0 | 2026-01-29 | Windows DLL構造, COM基礎, Win32ウィンドウ |
 | v0.0.1 | 2025-01-30 | 変換エンジン完成、CLIツール |
@@ -105,7 +116,7 @@ cargo build --release
 
 | バージョン | 目標 | 主な機能 |
 |-----------|------|----------|
-| v0.4.0 | Phase 4完了 | リアルタイム変換, IMEトグル |
+| v0.5.0 | Phase 4完了 | 残りのPhase 4機能 |
 | v1.0.0 | Phase 5完了 | 実用レベル |
 
 ---
@@ -128,32 +139,61 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 # Windowsクロスコンパイル (Linux上で開発する場合)
 rustup target add x86_64-pc-windows-gnu
-
-# ビルド
-cargo build
-
-# テスト
-cargo test
-
-# リンター
-cargo clippy
 ```
+
+### make ターゲット
+
+| ターゲット | 説明 |
+|-----------|------|
+| `make` / `make all` | デバッグビルド (Windows向けクロスコンパイル) |
+| `make release` | クリーン → テスト → リリースビルド → `build/` に成果物コピー |
+| `make build-debug` | デバッグビルド |
+| `make build-release` | リリースビルド |
+| `make build-dll` | DLLのみリリースビルド |
+| `make cp-release` | リリース成果物を `build/` にコピー (exe, dll, bat, chamsae.json) |
+| `make test` | `cargo test` 実行 |
+| `make clean` | `cargo clean` 実行 |
+
+`make release` を実行すると、`build/` ディレクトリに以下が配置される:
+
+```
+build/
+├── chamsae.exe                         # CLIツール
+├── chamsae.dll                         # IME DLL
+├── chamsae.json                        # 設定ファイル (テンプレート自動生成)
+├── register_chamsae_keyboard.bat       # IME登録バッチ
+└── unregister_chamsae_keyboard.bat     # IME登録解除バッチ
+```
+
+この `build/` フォルダをWindows環境にコピーすればすぐに使える。
 
 ### ディレクトリ構成
 
 ```
 chamsae/
 ├── Cargo.toml
-├── makefile
+├── makefile               # ビルド・テスト・リリース
+├── chamsae.json           # 設定ファイルテンプレート
 ├── readme.md              # 本ファイル
 ├── spec_v0.1.0.md         # 仕様書 (Phase 1)
 ├── spec_v0.2.0.md         # 仕様書 (Phase 2)
 ├── spec_v0.3.0.md         # 仕様書 (Phase 3)
+├── spec_v0.4.0.md         # 仕様書 (Phase 4)
+├── build/                 # make release の出力先 (gitignore)
+│   ├── chamsae.exe
+│   ├── chamsae.dll
+│   ├── chamsae.json
+│   ├── register_chamsae_keyboard.bat
+│   └── unregister_chamsae_keyboard.bat
 └── src/
     ├── lib.rs             # ライブラリルート + DLLエクスポート
     ├── hangul.rs          # 変換ロジック + テスト
+    ├── config.rs          # 設定ファイル読み込み (chamsae.json)
     ├── guid.rs            # GUID/CLSID定義
     ├── registry.rs        # レジストリ登録 + TSF登録
+    ├── bat/
+    │   ├── register_chamsae_keyboard.bat     # IME登録 (UAC自動昇格)
+    │   └── unregister_chamsae_keyboard.bat   # IME登録解除 (UAC自動昇格)
     ├── com/
     │   ├── mod.rs         # COMモジュール
     │   ├── class_factory.rs   # IClassFactory実装
@@ -181,7 +221,8 @@ chamsae/
 | 引数解析 | clap |
 | エラー処理 | anyhow |
 | Windows API | windows-rs 0.58 |
-| テスト | 標準 (cargo test) |
+| JSON設定 | serde + serde_json |
+| テスト | 標準 (cargo test) + tempfile |
 
 ---
 
@@ -191,25 +232,35 @@ DLLをWindowsに登録してIMEとして使用する手順。
 
 `regsvr32` を実行すると以下が行われる:
 1. CLSID/InprocServer32 のレジストリ登録
-2. TSFプロファイル登録 (韓国語キーボードとして登録)
-3. TSFカテゴリ登録 (キーボードTIPとして登録)
+2. 設定ファイル (`chamsae.json`) の読み込み (なければデフォルトで新規作成)
+3. TSFプロファイル登録 (設定に基づき日本語/韓国語キーボードとして登録)
+4. TSFカテゴリ登録 (キーボードTIPとして登録)
 
 ### ビルド
 
-```bat
-cargo build --release --target x86_64-pc-windows-gnu
+```bash
+# Linux (WSL) でクロスコンパイル → build/ に成果物配置
+make release
 ```
 
 ### 登録・解除
 
-**管理者権限のコマンドプロンプト**で実行してください。
+`build/` フォルダ内のバッチファイルをダブルクリックで実行する。
+管理者権限が必要な場合は自動でUAC昇格ダイアログが表示される。
+
+| バッチファイル | 説明 |
+|---------------|------|
+| `register_chamsae_keyboard.bat` | `regsvr32 chamsae.dll` を実行してIMEを登録 |
+| `unregister_chamsae_keyboard.bat` | `regsvr32 /u chamsae.dll` を実行してIME登録を解除 |
+
+手動で実行する場合 (**管理者権限のコマンドプロンプト**):
 
 ```bat
 REM DLLの登録 (IMEとしてシステムに追加)
-regsvr32 target\x86_64-pc-windows-gnu\release\chamsae.dll
+regsvr32 chamsae.dll
 
 REM DLLの登録解除
-regsvr32 /u target\x86_64-pc-windows-gnu\release\chamsae.dll
+regsvr32 /u chamsae.dll
 ```
 
 ### 登録の確認
@@ -225,13 +276,57 @@ HKEY_CLASSES_ROOT\CLSID\{D4A5B8E1-7C2F-4A3D-9E6B-1F8C0D2A5E7B}
     └── ThreadingModel = "Apartment"
 ```
 
-登録後、Windowsの「設定 > 時刻と言語 > 言語と地域」で韓国語キーボードとして「Chamsae Hangul IME」が表示される。
+登録後、Windowsの「設定 > 時刻と言語 > 言語と地域」で「Chamsae Hangul IME」が表示される。
+デフォルトでは日本語キーボードとして登録される。韓国語としても登録するには設定ファイルを変更する (下記参照)。
+
+### 設定ファイル
+
+DLLと同じディレクトリに `chamsae.json` が配置される (初回登録時に自動作成)。
+
+```json
+{
+  "toggle_key": {
+    "key": "Space",
+    "shift": true,
+    "ctrl": false,
+    "alt": false
+  },
+  "languages": {
+    "japanese": true,
+    "korean": false
+  }
+}
+```
+
+#### toggle_key
+
+IME ON/OFF の切り替えキー。デフォルトは Shift+Space。
+
+| フィールド | 説明 | 指定可能な値 |
+|-----------|------|-------------|
+| `key` | キー名 | `"A"`〜`"Z"`, `"0"`〜`"9"`, `"Space"` |
+| `shift` | Shift同時押し | `true` / `false` |
+| `ctrl` | Ctrl同時押し | `true` / `false` |
+| `alt` | Alt同時押し | `true` / `false` |
+
+例: Alt+S に変更する場合:
+```json
+"toggle_key": { "key": "S", "shift": false, "ctrl": false, "alt": true }
+```
+
+#### languages
+
+`regsvr32` 実行時にどの言語プロファイルを登録するかを制御する。
+設定変更後は `regsvr32 /u` で登録解除してから再登録する。
+
+| フィールド | 説明 | デフォルト |
+|-----------|------|----------|
+| `japanese` | 日本語キーボードとして登録 | `true` |
+| `korean` | 韓国語キーボードとして登録 | `false` |
 
 ### 現在の制限
 
-- IME ON/OFF のトグル機能がないため、登録すると常にローマ字→ハングル変換が有効になる
 - 候補ウィンドウは未実装 (コンポジション下線のみ)
-- a-z 以外のキー入力中にコンポジションの自動確定が行われない
 
 ### トラブルシューティング
 

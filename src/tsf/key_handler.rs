@@ -6,8 +6,11 @@
 /// 仮想キーコード定数。
 pub const VK_BACK: u32 = 0x08;
 pub const VK_RETURN: u32 = 0x0D;
-pub const VK_SPACE: u32 = 0x20;
+pub const VK_SHIFT: u32 = 0x10;
+pub const VK_CONTROL: u32 = 0x11;
+pub const VK_MENU: u32 = 0x12;
 pub const VK_ESCAPE: u32 = 0x1B;
+pub const VK_SPACE: u32 = 0x20;
 
 /// 仮想キーコードからASCII小文字への変換。
 ///

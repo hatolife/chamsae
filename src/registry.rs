@@ -73,8 +73,9 @@ pub fn register_server() -> Result<()> {
         set_reg_string_value(&inproc_key, Some("ThreadingModel"), "Apartment")?;
     }
 
-    // TSFプロファイルの登録。
-    crate::tsf::registration::register_tsf_profile()?;
+    // 設定ファイルを読み込み、TSFプロファイルを登録。
+    let config = crate::config::Config::load_from_dll();
+    crate::tsf::registration::register_tsf_profile(&config)?;
 
     Ok(())
 }
