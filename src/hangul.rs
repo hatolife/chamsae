@@ -804,12 +804,12 @@ mod tests {
 		// 濃音を含む単語
 		assert_eq!(c.convert("eo kkae"), "어깨");       // 肩
 		assert_eq!(c.convert("o ppa"), "오빠");        // 兄 (女性から)
-		assert_eq!(c.convert("eo tteoh ke"), "어떻게"); // どうやって
-		assert_eq!(c.convert("a jjig"), "아직");       // まだ
-		assert_eq!(c.convert("eo jje"), "어째");       // なぜ
+		assert_eq!(c.convert("eo tteoh ge"), "어떻게"); // どうやって
+		assert_eq!(c.convert("a jig"), "아직");        // まだ
+		assert_eq!(c.convert("eo jjae"), "어째");      // なぜ
 		assert_eq!(c.convert("kko ma"), "꼬마");       // ちびっ子
 		assert_eq!(c.convert("ssa u da"), "싸우다");   // 戦う
-		assert_eq!(c.convert("na ppu da"), "나쁘다");  // 悪い
+		assert_eq!(c.convert("na ppeu da"), "나쁘다"); // 悪い
 		assert_eq!(c.convert("ye ppeu da"), "예쁘다"); // きれい
 		assert_eq!(c.convert("ba ppeu da"), "바쁘다"); // 忙しい
 	}
