@@ -20,11 +20,11 @@ Rust学習を兼ねた自作IMEプロジェクト。
 cargo build --release
 
 # 単一変換
-./target/release/hangul_cli -i "an nyeong ha se yo"
+./target/release/chamsae -i "an nyeong ha se yo"
 # 出力: 안녕하세요
 
 # インタラクティブモード
-./target/release/hangul_cli -I
+./target/release/chamsae -I
 > han gug eo
   → 한국어
 > exit
@@ -37,7 +37,7 @@ cargo build --release
 | 半角スペース1つ | 音節区切り | `han gug` → 한국 |
 | 半角スペース2つ | 実際のスペース | `an nyeong  ha se yo` → 안녕 하세요 |
 
-詳細は [spec_v0.1.0.md](./spec_v0.1.0.md) を参照。
+詳細は [spec_v0.1.0.md](./spec_v0.1.0.md) / [spec_v0.2.0.md](./spec_v0.2.0.md) を参照。
 
 ---
 
@@ -144,11 +144,12 @@ cargo clippy
 ### ディレクトリ構成
 
 ```
-hangul_ime/
+chamsae/
 ├── Cargo.toml
 ├── makefile
 ├── readme.md           # 本ファイル
-├── spec_v0.1.0.md      # 仕様書
+├── spec_v0.1.0.md      # 仕様書 (Phase 1)
+├── spec_v0.2.0.md      # 仕様書 (Phase 2)
 └── src/
     ├── lib.rs          # ライブラリルート + DLLエクスポート
     ├── hangul.rs       # 変換ロジック + テスト
@@ -169,7 +170,7 @@ hangul_ime/
 ### 将来の構成 (Phase 3以降)
 
 ```
-hangul_ime/
+chamsae/
 ├── Cargo.toml
 ├── readme.md
 ├── spec_v*.md
@@ -207,18 +208,50 @@ hangul_ime/
 
 ## DLL登録 (Windows)
 
-Phase 2で作成したDLLをWindowsに登録する手順:
+Phase 2で作成したDLLをWindowsに登録する手順。
+
+> **注意**: 現在 (v0.2.0) のDLLはCOM基盤のみの実装です。
+> レジストリへのCLSID登録は可能ですが、IMEとしてはまだ動作しません。
+> IMEとして使用可能になるのはPhase 3 (TSF実装) 以降です。
+
+### ビルド
 
 ```bat
-REM DLLのビルド
 cargo build --release --target x86_64-pc-windows-gnu
+```
 
-REM DLLの登録 (管理者権限で実行)
-regsvr32 target\x86_64-pc-windows-gnu\release\hangul_ime.dll
+### 登録・解除
+
+**管理者権限のコマンドプロンプト**で実行してください。
+
+```bat
+REM DLLの登録
+regsvr32 target\x86_64-pc-windows-gnu\release\chamsae.dll
 
 REM DLLの登録解除
-regsvr32 /u target\x86_64-pc-windows-gnu\release\hangul_ime.dll
+regsvr32 /u target\x86_64-pc-windows-gnu\release\chamsae.dll
 ```
+
+### 登録の確認
+
+レジストリエディタ (`regedit`) で以下のキーが作成されていれば成功です。
+このGUIDは `src/guid.rs` で固定定義された値で、ビルドごとに変わりません。
+
+```
+HKEY_CLASSES_ROOT\CLSID\{D4A5B8E1-7C2F-4A3D-9E6B-1F8C0D2A5E7B}
+├── (Default) = "Chamsae Hangul IME"
+└── InprocServer32
+    ├── (Default) = "<DLLの絶対パス>"
+    └── ThreadingModel = "Apartment"
+```
+
+### トラブルシューティング
+
+| 症状 | 原因・対処 |
+|------|-----------|
+| `regsvr32` でアクセス拒否 | 管理者権限で実行していない。コマンドプロンプトを「管理者として実行」で開く |
+| モジュールが見つからない | DLLパスが間違っている。絶対パスで指定するか、DLLのあるディレクトリで実行する |
+| エントリポイントが見つからない | ビルドターゲットが正しくない。`--target x86_64-pc-windows-gnu` を確認する |
 
 ---
 

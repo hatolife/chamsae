@@ -1,18 +1,18 @@
 [package]
-name = "hangul_ime"
+name = "chamsae"
 version = "0.2.0"
 edition = "2021"
 
 [lib]
-name = "hangul_ime"
+name = "chamsae"
 crate-type = ["cdylib", "rlib"]
 
 [[bin]]
-name = "hangul_cli"
+name = "chamsae"
 path = "src/bin/cli.rs"
 
 [[bin]]
-name = "window_test"
+name = "chamsae_window_test"
 path = "src/bin/window_test.rs"
 
 [dependencies]
@@ -23,9 +23,11 @@ anyhow = "1"
 windows = { version = "0.58", features = [
     "implement",
     "Win32_Foundation",
+    "Win32_Security",
     "Win32_System_Com",
     "Win32_System_LibraryLoader",
     "Win32_System_Registry",
     "Win32_UI_WindowsAndMessaging",
     "Win32_Graphics_Gdi",
 ] }
+windows-core = "0.58"

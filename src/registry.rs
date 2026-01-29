@@ -12,7 +12,7 @@
 //!     └── {D4A5B8E1-7C2F-4A3D-9E6B-1F8C0D2A5E7B}
 //!         ├── (Default) = "Chamsae Hangul IME"
 //!         └── InprocServer32
-//!             ├── (Default) = "C:\path\to\hangul_ime.dll"
+//!             ├── (Default) = "C:\path\to\chamsae.dll"
 //!             └── ThreadingModel = "Apartment"
 //! ```
 //!
@@ -20,13 +20,13 @@
 //!
 //! ```bat
 //! REM 登録
-//! regsvr32 hangul_ime.dll
+//! regsvr32 chamsae.dll
 //!
 //! REM 登録解除
-//! regsvr32 /u hangul_ime.dll
+//! regsvr32 /u chamsae.dll
 //! ```
 
-use windows::core::{w, Result, PCWSTR};
+use windows::core::{Result, PCWSTR};
 use windows::Win32::Foundation::MAX_PATH;
 use windows::Win32::System::LibraryLoader::GetModuleFileNameW;
 use windows::Win32::System::Registry::{
@@ -88,7 +88,7 @@ pub fn unregister_server() -> Result<()> {
         let wide_path: Vec<u16> = clsid_key_path.encode_utf16().chain(Some(0)).collect();
 
         // サブキーを含めて全て削除。
-        RegDeleteTreeW(HKEY_CLASSES_ROOT, PCWSTR(wide_path.as_ptr()))?;
+        RegDeleteTreeW(HKEY_CLASSES_ROOT, PCWSTR(wide_path.as_ptr())).ok()?;
     }
 
     Ok(())
@@ -101,7 +101,7 @@ pub fn unregister_server() -> Result<()> {
 unsafe fn get_dll_path() -> Result<String> {
     let hmodule = dll_module::get_module_handle();
     let mut path_buf = [0u16; MAX_PATH as usize];
-    let len = GetModuleFileNameW(Some(hmodule.into()), &mut path_buf);
+    let len = GetModuleFileNameW(hmodule, &mut path_buf);
 
     if len == 0 {
         return Err(windows::core::Error::from_win32());
@@ -125,7 +125,7 @@ unsafe fn create_reg_key(parent: HKEY, subkey: &str) -> Result<HKEY> {
         None,
         &mut hkey,
         None,
-    )?;
+    ).ok()?;
 
     Ok(hkey)
 }
@@ -155,7 +155,7 @@ unsafe fn set_reg_string_value(
         0,
         REG_SZ,
         Some(value_bytes),
-    )?;
+    ).ok()?;
 
     Ok(())
 }

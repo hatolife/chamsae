@@ -14,7 +14,7 @@
 
 use windows::core::{w, Result, PCWSTR};
 use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
-use windows::Win32::Graphics::Gdi::{GetStockObject, WHITE_BRUSH};
+use windows::Win32::Graphics::Gdi::{GetStockObject, HBRUSH, WHITE_BRUSH};
 use windows::Win32::UI::WindowsAndMessaging::{
     CreateWindowExW, DefWindowProcW, DispatchMessageW, GetMessageW,
     LoadCursorW, PostQuitMessage, RegisterClassW, ShowWindow, TranslateMessage,
@@ -44,7 +44,7 @@ pub fn create_test_window() -> Result<()> {
                 .into(),
             hIcon: Default::default(),
             hCursor: LoadCursorW(None, IDC_ARROW)?,
-            hbrBackground: GetStockObject(WHITE_BRUSH).into(),
+            hbrBackground: HBRUSH(GetStockObject(WHITE_BRUSH).0),
             lpszMenuName: PCWSTR::null(),
             lpszClassName: WINDOW_CLASS_NAME,
         };

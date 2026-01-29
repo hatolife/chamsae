@@ -2,7 +2,7 @@
 
 use anyhow::Result;
 use clap::Parser;
-use hangul_ime::hangul::HangulConverter;
+use chamsae::hangul::HangulConverter;
 
 /// コマンドライン引数。
 #[derive(Parser, Debug)]

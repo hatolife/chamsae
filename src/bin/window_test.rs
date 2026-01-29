@@ -6,7 +6,7 @@
 //! ## 使い方
 //!
 //! ```bat
-//! cargo run --bin window_test
+//! cargo run --bin chamsae_window_test
 //! ```
 
 #[cfg(not(windows))]
@@ -20,7 +20,7 @@ fn main() {
     println!("Chamsae IME - Win32ウィンドウテスト");
     println!("ウィンドウを作成しています...");
 
-    match hangul_ime::win32::window::create_test_window() {
+    match chamsae::win32::window::create_test_window() {
         Ok(()) => {
             println!("ウィンドウが正常に閉じられました。");
         }
