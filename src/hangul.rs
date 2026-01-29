@@ -25,8 +25,8 @@ impl HangulConverter {
 	/// 初声マッピングを構築する。
 	fn build_choseong() -> HashMap<&'static str, u32> {
 		[
-			("g", 0), ("kk", 1), ("n", 2), ("d", 3), ("tt", 4),
-			("r", 5), ("l", 5), ("m", 6), ("b", 7), ("pp", 8),
+			("g", 0), ("gg", 1),("kk", 1), ("n", 2), ("d", 3), ("dd", 4), ("tt", 4),
+			("r", 5), ("l", 5), ("m", 6), ("b", 7), ("bb", 8), ("pp", 8),
 			("s", 9), ("ss", 10), ("j", 12), ("jj", 13),
 			("ch", 14), ("k", 15), ("t", 16), ("p", 17), ("h", 18),
 		]
@@ -50,7 +50,7 @@ impl HangulConverter {
 	/// 終声マッピングを構築する。
 	fn build_jongseong() -> HashMap<&'static str, u32> {
 		[
-			("g", 1), ("kk", 2), ("gs", 3), ("n", 4),
+			("g", 1), ("gg", 2), ("gs", 3), ("n", 4),
 			("nj", 5), ("nh", 6), ("d", 7), ("l", 8), ("lg", 9),
 			("lm", 10), ("lb", 11), ("ls", 12), ("lt", 13), ("lp", 14),
 			("lh", 15), ("m", 16), ("b", 17), ("bs", 18), ("s", 19),
@@ -279,7 +279,10 @@ mod tests {
 
         // 濃音 (된소리)。
         assert_eq!(c.convert("kka"), "까");
+        assert_eq!(c.convert("gga"), "까");
+        assert_eq!(c.convert("dda"), "따");
         assert_eq!(c.convert("tta"), "따");
+        assert_eq!(c.convert("bba"), "빠");
         assert_eq!(c.convert("ppa"), "빠");
         assert_eq!(c.convert("ssa"), "싸");
         assert_eq!(c.convert("jja"), "짜");
@@ -388,7 +391,7 @@ mod tests {
         let c = HangulConverter::new();
 
         // 濃音終声。
-        assert_eq!(c.convert("gakk"), "갂");
+        assert_eq!(c.convert("gagg"), "갂");
         assert_eq!(c.convert("gass"), "갔");
     }
 
@@ -422,10 +425,10 @@ mod tests {
 		let c = HangulConverter::new();
 
 		// 濃音を含む単語。
-		assert_eq!(c.convert("a ppa"), "아빠");
+		assert_eq!(c.convert("a bba"), "아빠");
 		// 엄마 = eom + ma (ㅓ+ㅁ の終声m)
 		assert_eq!(c.convert("eom ma"), "엄마");
-		assert_eq!(c.convert("ppang"), "빵");
+		assert_eq!(c.convert("bbang"), "빵");
 	}
 
     // ==================== スペース処理テスト ====================
@@ -526,7 +529,7 @@ mod tests {
 
 		// 濃音 + 複合母音
 		assert_eq!(c.convert("ssya"), "쌰");
-		assert_eq!(c.convert("ppyeo"), "뼈");
+		assert_eq!(c.convert("bbyeo"), "뼈");
 		
 		// 激音 + 複合母音
 		assert_eq!(c.convert("chwa"), "촤");
@@ -565,7 +568,14 @@ mod tests {
 		// 子音のみ (母音がないのでそのまま出力)
 		assert_eq!(c.convert("g"), "g");
 		assert_eq!(c.convert("ng"), "ng");
+		assert_eq!(c.convert("gg"), "gg");
 		assert_eq!(c.convert("kk"), "kk");
+		assert_eq!(c.convert("jj"), "jj");
+		assert_eq!(c.convert("bb"), "bb");
+		assert_eq!(c.convert("pp"), "pp");
+		assert_eq!(c.convert("dd"), "dd");
+		assert_eq!(c.convert("tt"), "tt");
+		assert_eq!(c.convert("ss"), "ss");
 	}
 
 	#[test]
@@ -653,13 +663,16 @@ mod tests {
 
 		// 全19種類の初声 (母音 a で統一)
 		assert_eq!(c.convert("ga"), "가");    // 0: ㄱ
+		assert_eq!(c.convert("gga"), "까");   // 1: ㄲ
 		assert_eq!(c.convert("kka"), "까");   // 1: ㄲ
 		assert_eq!(c.convert("na"), "나");    // 2: ㄴ
 		assert_eq!(c.convert("da"), "다");    // 3: ㄷ
+		assert_eq!(c.convert("dda"), "따");   // 4: ㄸ
 		assert_eq!(c.convert("tta"), "따");   // 4: ㄸ
 		assert_eq!(c.convert("ra"), "라");    // 5: ㄹ
 		assert_eq!(c.convert("ma"), "마");    // 6: ㅁ
 		assert_eq!(c.convert("ba"), "바");    // 7: ㅂ
+		assert_eq!(c.convert("bba"), "빠");   // 8: ㅃ
 		assert_eq!(c.convert("ppa"), "빠");   // 8: ㅃ
 		assert_eq!(c.convert("sa"), "사");    // 9: ㅅ
 		assert_eq!(c.convert("ssa"), "싸");   // 10: ㅆ
@@ -707,7 +720,7 @@ mod tests {
 
 		// 全27種類の終声 (0=なし を除く)
 		assert_eq!(c.convert("gag"), "각");   // g = 1
-		assert_eq!(c.convert("gakk"), "갂");  // kk = 2
+		assert_eq!(c.convert("gagg"), "갂");  // gg = 2
 		assert_eq!(c.convert("gags"), "갃");  // gs = 3
 		assert_eq!(c.convert("gan"), "간");   // n = 4
 		assert_eq!(c.convert("ganj"), "갅");  // nj = 5
@@ -761,7 +774,7 @@ mod tests {
 
 		// 形容詞
 		assert_eq!(c.convert("joh da"), "좋다");       // 良い
-		assert_eq!(c.convert("na ppeu da"), "나쁘다"); // 悪い
+		assert_eq!(c.convert("na bbeu da"), "나쁘다"); // 悪い
 		assert_eq!(c.convert("keu da"), "크다");       // 大きい
 		assert_eq!(c.convert("jag da"), "작다");       // 小さい
 	}
@@ -802,16 +815,16 @@ mod tests {
 		let c = HangulConverter::new();
 
 		// 濃音を含む単語
-		assert_eq!(c.convert("eo kkae"), "어깨");       // 肩
-		assert_eq!(c.convert("o ppa"), "오빠");        // 兄 (女性から)
-		assert_eq!(c.convert("eo tteoh ge"), "어떻게"); // どうやって
+		assert_eq!(c.convert("eo ggae"), "어깨");       // 肩
+		assert_eq!(c.convert("o bba"), "오빠");        // 兄 (女性から)
+		assert_eq!(c.convert("eo ddeoh ge"), "어떻게"); // どうやって
 		assert_eq!(c.convert("a jig"), "아직");        // まだ
 		assert_eq!(c.convert("eo jjae"), "어째");      // なぜ
-		assert_eq!(c.convert("kko ma"), "꼬마");       // ちびっ子
+		assert_eq!(c.convert("ggo ma"), "꼬마");       // ちびっ子
 		assert_eq!(c.convert("ssa u da"), "싸우다");   // 戦う
-		assert_eq!(c.convert("na ppeu da"), "나쁘다"); // 悪い
-		assert_eq!(c.convert("ye ppeu da"), "예쁘다"); // きれい
-		assert_eq!(c.convert("ba ppeu da"), "바쁘다"); // 忙しい
+		assert_eq!(c.convert("na bbeu da"), "나쁘다"); // 悪い
+		assert_eq!(c.convert("ye bbeu da"), "예쁘다"); // きれい
+		assert_eq!(c.convert("ba bbeu da"), "바쁘다"); // 忙しい
 	}
 
 	#[test]

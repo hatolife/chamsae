@@ -11,9 +11,11 @@
 //! 4. COMランタイムがIClassFactory::CreateInstanceを呼ぶ
 //! 5. ClassFactoryがTextServiceオブジェクトを作成して返す
 
-use windows::core::{implement, IUnknown, GUID};
-use windows::Win32::Foundation::{BOOL, CLASS_E_NOAGGREGATION, E_NOINTERFACE};
+use windows::core::{implement, Interface, IUnknown, GUID};
+use windows::Win32::Foundation::{BOOL, CLASS_E_NOAGGREGATION};
 use windows::Win32::System::Com::{IClassFactory, IClassFactory_Impl};
+
+use crate::tsf::text_service::TextService;
 
 use super::dll_module;
 
@@ -47,14 +49,10 @@ impl IClassFactory_Impl for ClassFactory_Impl {
     /// - `riid`: 要求するインターフェースのIID
     /// - `ppvobject`: 作成されたオブジェクトのポインタを受け取る
     ///
-    /// # Phase 2 の制限
-    ///
-    /// 現在はTextServiceが未実装のため、E_NOINTERFACEを返す。
-    /// Phase 3でITfTextInputProcessorExを実装後、ここでTextServiceを返す。
     fn CreateInstance(
         &self,
         punkouter: Option<&IUnknown>,
-        _riid: *const GUID,
+        riid: *const GUID,
         ppvobject: *mut *mut core::ffi::c_void,
     ) -> windows::core::Result<()> {
         unsafe {
@@ -67,13 +65,10 @@ impl IClassFactory_Impl for ClassFactory_Impl {
                 return Err(CLASS_E_NOAGGREGATION.into());
             }
 
-            // Phase 3で実装予定: TextServiceオブジェクトの作成。
-            // let text_service = TextService::new();
-            // let unknown: IUnknown = text_service.into();
-            // return unknown.query(riid, ppvobject).ok();
-
-            // Phase 2: TextService未実装のためE_NOINTERFACE。
-            Err(E_NOINTERFACE.into())
+            // TextServiceオブジェクトを作成し、要求されたインターフェースを返す。
+            let text_service = TextService::new();
+            let unknown: IUnknown = text_service.into();
+            unknown.query(riid, ppvobject).ok()
         }
     }
 

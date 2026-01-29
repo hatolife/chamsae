@@ -8,10 +8,10 @@ Rust学習を兼ねた自作IMEプロジェクト。
 
 | 項目 | 状態 |
 |------|------|
-| バージョン | v0.2.0 (開発中) |
-| フェーズ | Phase 2 完了 |
+| バージョン | v0.3.0 (開発中) |
+| フェーズ | Phase 3 完了 |
 | テスト | 47テスト通過 |
-| 対応OS | CLI: Windows/Linux, DLL: Windows |
+| 対応OS | CLI: Windows/Linux, DLL/IME: Windows |
 
 ## クイックスタート
 
@@ -37,7 +37,7 @@ cargo build --release
 | 半角スペース1つ | 音節区切り | `han gug` → 한국 |
 | 半角スペース2つ | 実際のスペース | `an nyeong  ha se yo` → 안녕 하세요 |
 
-詳細は [spec_v0.1.0.md](./spec_v0.1.0.md) / [spec_v0.2.0.md](./spec_v0.2.0.md) を参照。
+詳細は [spec_v0.1.0.md](./spec_v0.1.0.md) / [spec_v0.2.0.md](./spec_v0.2.0.md) / [spec_v0.3.0.md](./spec_v0.3.0.md) を参照。
 
 ---
 
@@ -60,26 +60,24 @@ cargo build --release
 | 2.3 | COM基礎 (IUnknown, ClassFactory) | ✅ |
 | 2.4 | DLL作成・レジストリ登録 | ✅ |
 
-### Phase 3: TSF IME実装 🔜 次
+### Phase 3: TSF IME実装 ✅ 完了
+
+| マイルストーン | 内容 | 状態 |
+|---------------|------|------|
+| 3.1 | TSF最小スケルトン | ✅ |
+| 3.2 | ITfTextInputProcessorEx実装 | ✅ |
+| 3.3 | キーイベント処理 | ✅ |
+| 3.4 | 変換ロジック統合 | ✅ |
+| 3.5 | コンポジション下線表示 | ✅ |
+
+### Phase 4: リアルタイム変換 🔜 次
 
 | マイルストーン | 内容 | 予定 |
 |---------------|------|------|
-| 3.1 | TSF最小スケルトン | Week 3 |
-| 3.2 | ITfTextInputProcessorEx実装 | Week 3-4 |
-| 3.3 | キーイベント処理 | Week 4 |
-| 3.4 | 変換ロジック統合 | Week 5 |
-| 3.5 | 候補ウィンドウ (基本) | Week 5-6 |
-
-**目標**: システムIMEとして動作する最小実装
-
-### Phase 4: リアルタイム変換
-
-| マイルストーン | 内容 | 予定 |
-|---------------|------|------|
-| 4.1 | キー入力単位の処理 | Week 7 |
-| 4.2 | 終声の自動移動 (連音化) | Week 7 |
-| 4.3 | Composition文字列表示 | Week 8 |
-| 4.4 | バックスペース処理 | Week 8 |
+| 4.1 | 終声の自動移動 (連音化) | - |
+| 4.2 | IME ON/OFF トグル | - |
+| 4.3 | 非対応キー入力時の自動確定 | - |
+| 4.4 | エッジケース修正 | - |
 
 **目標**: 韓国IMEと同様のリアルタイム再構成
 
@@ -99,6 +97,7 @@ cargo build --release
 
 | バージョン | 日付 | 内容 |
 |-----------|------|------|
+| v0.3.0 | 2026-01-30 | TSF IME実装, キーイベント処理, コンポジション |
 | v0.2.0 | 2026-01-29 | Windows DLL構造, COM基礎, Win32ウィンドウ |
 | v0.0.1 | 2025-01-30 | 変換エンジン完成、CLIツール |
 
@@ -106,8 +105,7 @@ cargo build --release
 
 | バージョン | 目標 | 主な機能 |
 |-----------|------|----------|
-| v0.3.0 | Phase 3完了 | TSF IME動作 |
-| v0.4.0 | Phase 4完了 | リアルタイム変換 |
+| v0.4.0 | Phase 4完了 | リアルタイム変換, IMEトグル |
 | v1.0.0 | Phase 5完了 | 実用レベル |
 
 ---
@@ -147,50 +145,31 @@ cargo clippy
 chamsae/
 ├── Cargo.toml
 ├── makefile
-├── readme.md           # 本ファイル
-├── spec_v0.1.0.md      # 仕様書 (Phase 1)
-├── spec_v0.2.0.md      # 仕様書 (Phase 2)
+├── readme.md              # 本ファイル
+├── spec_v0.1.0.md         # 仕様書 (Phase 1)
+├── spec_v0.2.0.md         # 仕様書 (Phase 2)
+├── spec_v0.3.0.md         # 仕様書 (Phase 3)
 └── src/
-    ├── lib.rs          # ライブラリルート + DLLエクスポート
-    ├── hangul.rs       # 変換ロジック + テスト
-    ├── guid.rs         # GUID/CLSID定義
-    ├── registry.rs     # レジストリ登録
+    ├── lib.rs             # ライブラリルート + DLLエクスポート
+    ├── hangul.rs          # 変換ロジック + テスト
+    ├── guid.rs            # GUID/CLSID定義
+    ├── registry.rs        # レジストリ登録 + TSF登録
     ├── com/
-    │   ├── mod.rs      # COMモジュール
-    │   ├── class_factory.rs  # IClassFactory実装
-    │   └── dll_module.rs     # DLLモジュール管理
+    │   ├── mod.rs         # COMモジュール
+    │   ├── class_factory.rs   # IClassFactory実装
+    │   └── dll_module.rs      # DLLモジュール管理
+    ├── tsf/
+    │   ├── mod.rs         # TSFモジュール
+    │   ├── text_service.rs    # TextService (ITfTextInputProcessorEx)
+    │   ├── key_handler.rs     # キーイベント判定
+    │   ├── edit_session.rs    # EditSession (コンポジション操作)
+    │   └── registration.rs    # TSFプロファイル・カテゴリ登録
     ├── win32/
-    │   ├── mod.rs      # Win32モジュール
-    │   └── window.rs   # 基本ウィンドウ作成
+    │   ├── mod.rs         # Win32モジュール
+    │   └── window.rs      # 基本ウィンドウ作成
     └── bin/
-        ├── cli.rs      # CLIツール
-        └── window_test.rs  # ウィンドウテスト
-```
-
-### 将来の構成 (Phase 3以降)
-
-```
-chamsae/
-├── Cargo.toml
-├── readme.md
-├── spec_v*.md
-├── src/
-│   ├── lib.rs          # DLLエントリポイント
-│   ├── hangul.rs       # 変換ロジック
-│   ├── guid.rs         # GUID定義
-│   ├── registry.rs     # レジストリ登録
-│   ├── com/            # COM基盤
-│   ├── win32/          # Win32ユーティリティ
-│   ├── tsf/
-│   │   ├── mod.rs
-│   │   ├── text_service.rs
-│   │   ├── key_handler.rs
-│   │   └── composition.rs
-│   └── bin/
-│       ├── cli.rs      # CLIツール (開発用)
-│       └── window_test.rs
-└── installer/
-    └── setup.iss       # Inno Setup スクリプト
+        ├── cli.rs         # CLIツール
+        └── window_test.rs # ウィンドウテスト
 ```
 
 ---
@@ -206,13 +185,14 @@ chamsae/
 
 ---
 
-## DLL登録 (Windows)
+## IME登録 (Windows)
 
-Phase 2で作成したDLLをWindowsに登録する手順。
+DLLをWindowsに登録してIMEとして使用する手順。
 
-> **注意**: 現在 (v0.2.0) のDLLはCOM基盤のみの実装です。
-> レジストリへのCLSID登録は可能ですが、IMEとしてはまだ動作しません。
-> IMEとして使用可能になるのはPhase 3 (TSF実装) 以降です。
+`regsvr32` を実行すると以下が行われる:
+1. CLSID/InprocServer32 のレジストリ登録
+2. TSFプロファイル登録 (韓国語キーボードとして登録)
+3. TSFカテゴリ登録 (キーボードTIPとして登録)
 
 ### ビルド
 
@@ -225,7 +205,7 @@ cargo build --release --target x86_64-pc-windows-gnu
 **管理者権限のコマンドプロンプト**で実行してください。
 
 ```bat
-REM DLLの登録
+REM DLLの登録 (IMEとしてシステムに追加)
 regsvr32 target\x86_64-pc-windows-gnu\release\chamsae.dll
 
 REM DLLの登録解除
@@ -245,6 +225,14 @@ HKEY_CLASSES_ROOT\CLSID\{D4A5B8E1-7C2F-4A3D-9E6B-1F8C0D2A5E7B}
     └── ThreadingModel = "Apartment"
 ```
 
+登録後、Windowsの「設定 > 時刻と言語 > 言語と地域」で韓国語キーボードとして「Chamsae Hangul IME」が表示される。
+
+### 現在の制限
+
+- IME ON/OFF のトグル機能がないため、登録すると常にローマ字→ハングル変換が有効になる
+- 候補ウィンドウは未実装 (コンポジション下線のみ)
+- a-z 以外のキー入力中にコンポジションの自動確定が行われない
+
 ### トラブルシューティング
 
 | 症状 | 原因・対処 |
@@ -252,6 +240,7 @@ HKEY_CLASSES_ROOT\CLSID\{D4A5B8E1-7C2F-4A3D-9E6B-1F8C0D2A5E7B}
 | `regsvr32` でアクセス拒否 | 管理者権限で実行していない。コマンドプロンプトを「管理者として実行」で開く |
 | モジュールが見つからない | DLLパスが間違っている。絶対パスで指定するか、DLLのあるディレクトリで実行する |
 | エントリポイントが見つからない | ビルドターゲットが正しくない。`--target x86_64-pc-windows-gnu` を確認する |
+| IMEが言語設定に表示されない | TSFプロファイル登録に失敗している可能性。`regsvr32` の出力を確認する |
 
 ---
 

@@ -1,7 +1,7 @@
 //! Chamsae - ハングルIME ライブラリ。
 //!
 //! ローマ字入力から韓国語ハングル文字への変換を行うIME。
-//! Phase 2: Windows API入門 - DLLエントリポイント + COM基礎。
+//! Phase 3: TSF IME実装。
 
 pub mod hangul;
 
@@ -14,6 +14,8 @@ pub mod com;
 pub mod win32;
 #[cfg(windows)]
 pub mod registry;
+#[cfg(windows)]
+pub mod tsf;
 
 // === DLLエクスポート関数 (Windows専用) ===
 

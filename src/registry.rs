@@ -73,6 +73,9 @@ pub fn register_server() -> Result<()> {
         set_reg_string_value(&inproc_key, Some("ThreadingModel"), "Apartment")?;
     }
 
+    // TSFプロファイルの登録。
+    crate::tsf::registration::register_tsf_profile()?;
+
     Ok(())
 }
 
@@ -80,6 +83,9 @@ pub fn register_server() -> Result<()> {
 ///
 /// CLSIDキー以下のサブキーを全て削除する。
 pub fn unregister_server() -> Result<()> {
+    // TSFプロファイルの登録解除 (エラーは無視して続行)。
+    let _ = crate::tsf::registration::unregister_tsf_profile();
+
     unsafe {
         let clsid_key_path = format!(
             "CLSID\\{}",

@@ -30,6 +30,9 @@ pub const IME_DISPLAY_NAME: &str = "Chamsae Hangul IME";
 /// IMEの説明。
 pub const IME_DESCRIPTION: &str = "Chamsae - Romanji to Hangul Input Method Editor";
 
+/// 韓国語のLANGID。
+pub const LANGID_KOREAN: u16 = 0x0412;
+
 #[cfg(test)]
 mod tests {
     use super::*;
