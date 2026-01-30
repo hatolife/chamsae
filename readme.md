@@ -33,41 +33,6 @@ Rust学習を兼ねた自作IMEプロジェクト。
 1. `uninstall.bat` をダブルクリックして実行（UAC昇格ダイアログが表示される）
 2. 配置したフォルダを削除
 
-## 現在のステータス
-
-| 項目 | 状態 |
-|------|------|
-| バージョン | v0.6.5 |
-| フェーズ | Phase 6 完了 |
-| テスト | 67テスト通過 |
-| CI/CD | GitHub Actions (テスト・ビルド・リリース自動化) |
-| 対応OS | CLI: Windows/Linux, DLL/IME: Windows |
-
-## クイックスタート
-
-```bash
-# リリースビルド (テスト → ビルド → build/ にコピー)
-make release
-
-# 単一変換
-./build/chamsae.exe -i "an nyeong ha se yo"
-# 出力: 안녕하세요
-
-# 標準入力から変換 (引数なしで起動)
-echo "han gug eo" | ./build/chamsae.exe
-# 出力: 한국어
-
-# インタラクティブモード
-./build/chamsae.exe -I
-> han gug eo
-  → 한국어
-> exit
-
-# 設定ファイルのテンプレート生成
-./build/chamsae.exe -t
-# カレントディレクトリに chamsae.json を生成
-```
-
 ## 入力規則
 
 | 入力 | 意味 | 例 |
@@ -81,54 +46,12 @@ echo "han gug eo" | ./build/chamsae.exe
 
 | ドキュメント | 内容 |
 |-------------|------|
-| [開発ガイド](./docs/development.md) | 開発環境・セットアップ・ディレクトリ構成・技術スタック |
+| [開発ガイド](./docs/development.md) | 環境構築 (WSL)・クイックスタート・ビルド・ディレクトリ構成 |
 | [設定・登録ガイド](./docs/configuration.md) | IME登録手順・設定ファイル・ユーザー辞書・トラブルシューティング |
 | [ロードマップ](./docs/roadmap.md) | Phase 1〜9 の開発計画・進捗 |
-
----
-
-## バージョン履歴
-
-| バージョン | 日付 | 内容 |
-|-----------|------|------|
-| v0.6.5 | 2026-01-30 | インストーラー: リネーム方式DLLアップグレード (再起動不要) |
-| v0.6.4 | 2026-01-30 | 候補ウィンドウ: 確定・キャンセル・修飾キー・フォーカス喪失時の非表示修正 |
-| v0.6.1 | 2026-01-30 | 設定GUI: コンソール非表示・背景色統一, 設定ファイルを%APPDATA%に移動 |
-| v0.6.0 | 2026-01-30 | ログ出力, ナビゲーションキー対応, 設定ホットリロード, DPI/マルチモニター対応 |
-| v0.5.0 | 2026-01-30 | ユーザー辞書, 候補ウィンドウ, トレイアイコン, 設定GUI, インストーラー, CI/CD |
-| v0.4.0 | 2026-01-30 | IMEトグル, 設定ファイル, 言語プロファイル設定, 連音化 |
-| v0.3.0 | 2026-01-30 | TSF IME実装, キーイベント処理, コンポジション |
-| v0.2.0 | 2026-01-30 | Windows DLL構造, COM基礎, Win32ウィンドウ |
-| v0.0.1 | 2025-01-30 | 変換エンジン完成、CLIツール |
-
----
-
-## 参考資料
-
-### ハングル
-
-- [Unicode Hangul Syllables](https://en.wikipedia.org/wiki/Korean_language_and_computers#Hangul_in_Unicode)
-- [Revised Romanization of Korean](https://en.wikipedia.org/wiki/Revised_Romanization_of_Korean)
-
-### Windows TSF
-
-- [Text Services Framework (Microsoft Docs)](https://docs.microsoft.com/en-us/windows/win32/tsf/text-services-framework)
-- [Windows Classic Samples - IME](https://github.com/microsoft/Windows-classic-samples/tree/main/Samples/IME)
-- [windows-rs](https://github.com/microsoft/windows-rs)
-
-### Rust IME実装例
-
-- [rust-ime](https://github.com/pxsta/rust-ime) - Rust TSF IMEの参考実装
-
----
+| [バージョン履歴](./docs/changelog.md) | リリースごとの変更内容 |
+| [参考資料](./docs/references.md) | ハングル・Windows TSF・Rust IME 関連リンク |
 
 ## ライセンス
 
 CC0 1.0 Universal
-
----
-
-## 作者メモ
-
-このプロジェクトはRust学習を目的としています。
-実用IMEとしての完成度より、学習過程を重視しています。

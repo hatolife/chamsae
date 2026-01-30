@@ -4,23 +4,130 @@
 
 ### 必要なもの
 
-| 項目 | バージョン |
-|------|-----------|
-| Rust | 1.75+ |
-| Windows SDK | 10.0+ (Phase 2以降) |
-| Visual Studio Build Tools | 2022 (Phase 2以降) |
+| 項目 | バージョン | 備考 |
+|------|-----------|------|
+| Rust | 1.75+ | `x86_64-pc-windows-gnu` ターゲットが必要 |
+| MinGW-w64 | — | Windows向けクロスコンパイラ |
+| jq | — | ビルドスクリプト (makefile) で使用 |
+| zip | — | `make zip-release` で使用 |
+| Windows SDK | 10.0+ | Windows上で直接ビルドする場合 |
+| Visual Studio Build Tools | 2022 | Windows上で直接ビルドする場合 |
 
-### セットアップ
+### WSL (Ubuntu) でのセットアップ
+
+WSL2 + Ubuntu を使った開発環境の構築手順。
+
+#### 1. システムパッケージのインストール
 
 ```bash
-# Rustインストール
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+sudo apt update
+sudo apt install -y build-essential mingw-w64 jq zip
+```
 
-# Windowsクロスコンパイル (Linux上で開発する場合)
+- `build-essential` — make, gcc 等の基本ビルドツール
+- `mingw-w64` — Windows向けクロスコンパイラ (`x86_64-w64-mingw32-gcc`)
+- `jq` — makefile 内で cargo の JSON 出力をパースするために使用
+- `zip` — `make zip-release` でリリース ZIP を作成するために使用
+
+#### 2. Rust のインストール
+
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source "$HOME/.cargo/env"
+```
+
+インストール後、バージョンを確認:
+
+```bash
+rustc --version
+cargo --version
+```
+
+#### 3. Windows クロスコンパイルターゲットの追加
+
+```bash
 rustup target add x86_64-pc-windows-gnu
 ```
 
-### make ターゲット
+このターゲットにより、Linux 上で `.exe` / `.dll` をビルドできる。
+
+#### 4. リポジトリのクローンとビルド確認
+
+```bash
+git clone <repository-url>
+cd chamsae
+
+# テスト実行 (Linux ネイティブ)
+make test
+
+# リリースビルド (Windows 向けクロスコンパイル)
+make release
+```
+
+`make release` が成功すると `build/` ディレクトリに成果物が生成される。
+
+#### 5. Windows 環境へのデプロイ
+
+WSL から Windows 側にビルド成果物をコピーする:
+
+```bash
+# Windows 側のフォルダにコピー (例: デスクトップ)
+cp -r build/ /mnt/c/Users/<ユーザー名>/Desktop/chamsae/
+```
+
+Windows 側で `install.bat` を実行すれば IME が登録される。
+
+### Windows でのセットアップ
+
+Windows 上で直接ビルドする場合は Visual Studio Build Tools 2022 と Windows SDK が必要。
+
+```powershell
+# Rustインストール (PowerShell)
+winget install Rustlang.Rustup
+
+# ビルド
+cargo build --lib
+cargo build --bins
+```
+
+## クイックスタート
+
+### CLIツール
+
+```bash
+# リリースビルド (テスト → ビルド → build/ にコピー)
+make release
+
+# 単一変換
+./build/chamsae.exe -i "an nyeong ha se yo"
+# 出力: 안녕하세요
+
+# 標準入力から変換 (引数なしで起動)
+echo "han gug eo" | ./build/chamsae.exe
+# 出力: 한국어
+
+# インタラクティブモード
+./build/chamsae.exe -I
+> han gug eo
+  → 한국어
+> exit
+
+# 設定ファイルのテンプレート生成
+./build/chamsae.exe -t
+# カレントディレクトリに chamsae.json を生成
+```
+
+### IME として使う
+
+1. `make release` でビルド
+2. `build/` フォルダを Windows 側にコピー
+3. `install.bat` を実行 (UAC 昇格ダイアログが表示される)
+4. Windows の「設定 > 時刻と言語 > 言語と地域」で「Chamsae Hangul IME」を確認
+5. Shift+Space で IME ON/OFF を切り替え
+
+詳細な設定・登録手順は [設定・登録ガイド](./configuration.md) を参照。
+
+## make ターゲット
 
 | ターゲット | 説明 |
 |-----------|------|
@@ -34,6 +141,8 @@ rustup target add x86_64-pc-windows-gnu
 | `make test` | `cargo test` 実行 |
 | `make clean` | `cargo clean` 実行 |
 | `make installer` | InnoSetup手動コンパイル手順の表示 |
+
+### ビルド成果物
 
 `make release` を実行すると、`build/` ディレクトリに以下が配置される:
 
@@ -56,14 +165,19 @@ chamsae/
 ├── Cargo.toml
 ├── makefile               # ビルド・テスト・リリース
 ├── chamsae.json           # 設定ファイルテンプレート
-├── readme.md              # 本ファイル
-├── docs/                  # 仕様書
-│   ├── spec_v0.1.0.md     # Phase 1
-│   ├── spec_v0.2.0.md     # Phase 2
-│   ├── spec_v0.3.0.md     # Phase 3
-│   ├── spec_v0.4.0.md     # Phase 4
-│   ├── spec_v0.5.0.md     # Phase 5
-│   └── spec_v0.6.0.md     # Phase 6
+├── readme.md
+├── docs/                  # ドキュメント・仕様書
+│   ├── development.md     # 本ファイル
+│   ├── configuration.md   # 設定・登録ガイド
+│   ├── roadmap.md         # ロードマップ
+│   ├── changelog.md       # バージョン履歴
+│   ├── references.md      # 参考資料
+│   ├── spec_v0.1.0.md     # Phase 1 仕様
+│   ├── spec_v0.2.0.md     # Phase 2 仕様
+│   ├── spec_v0.3.0.md     # Phase 3 仕様
+│   ├── spec_v0.4.0.md     # Phase 4 仕様
+│   ├── spec_v0.5.0.md     # Phase 5 仕様
+│   └── spec_v0.6.0.md     # Phase 6 仕様
 ├── installer/
 │   └── chamsae.iss        # InnoSetup定義
 ├── .github/workflows/
