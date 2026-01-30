@@ -88,8 +88,8 @@ impl TextService {
         if let Some(ref path_str) = config.user_dict_path {
             UserDict::load(std::path::Path::new(path_str))
         } else {
-            // デフォルト: DLLと同じディレクトリの user_dict.json。
-            match crate::config::get_dll_directory() {
+            // デフォルト: %APPDATA%\Chamsae\user_dict.json。
+            match crate::config::get_config_directory() {
                 Some(dir) => {
                     let path = dir.join("user_dict.json");
                     if path.exists() {

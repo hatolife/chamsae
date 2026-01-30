@@ -49,8 +49,8 @@ extern "system" fn DllMain(
                     .ok();
             }
 
-            // ロガーを初期化 (DLLと同じディレクトリにログ出力)。
-            if let Some(dir) = config::get_dll_directory() {
+            // ロガーを初期化 (%APPDATA%\Chamsae\ にログ出力)。
+            if let Some(dir) = config::get_config_directory() {
                 logger::init(&dir);
                 log::info!("Chamsae IME DLL loaded");
             }

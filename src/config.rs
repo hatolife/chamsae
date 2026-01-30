@@ -1,6 +1,6 @@
 //! 設定ファイル読み込み。
 //!
-//! DLLと同じディレクトリにある `chamsae.json` を読み込み、
+//! `%APPDATA%\Chamsae\chamsae.json` を読み込み、
 //! IMEトグルキーなどの設定を取得する。
 //! ファイルが存在しない場合はデフォルト設定で新規作成する。
 //! パース失敗時はデフォルト値にフォールバックする。
@@ -195,14 +195,29 @@ impl Config {
         }
     }
 
-    /// DLLのディレクトリパスを取得して設定を読み込む。
+    /// 設定ディレクトリから設定を読み込む。
+    ///
+    /// `%APPDATA%\Chamsae\` から読み込む。
+    /// ディレクトリが存在しない場合は作成する。
     #[cfg(windows)]
     pub fn load_from_dll() -> Self {
-        match get_dll_directory() {
+        match get_config_directory() {
             Some(dir) => Self::load(&dir),
             None => Self::default(),
         }
     }
+}
+
+/// 設定ディレクトリパスを取得する (`%APPDATA%\Chamsae\`)。
+///
+/// ディレクトリが存在しない場合は作成する。
+pub fn get_config_directory() -> Option<std::path::PathBuf> {
+    let appdata = std::env::var("APPDATA").ok()?;
+    let dir = std::path::PathBuf::from(appdata).join("Chamsae");
+    if !dir.exists() {
+        let _ = std::fs::create_dir_all(&dir);
+    }
+    Some(dir)
 }
 
 /// DLLモジュールのディレクトリパスを取得する。

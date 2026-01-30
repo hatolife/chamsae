@@ -125,11 +125,14 @@ fn run_settings() -> anyhow::Result<()> {
         "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
     ];
 
-    // 設定ファイルのパス。
-    let config_dir = std::env::current_exe()?
-        .parent()
-        .unwrap_or(std::path::Path::new("."))
-        .to_path_buf();
+    // 設定ファイルのパス (%APPDATA%\Chamsae\)。
+    let config_dir = chamsae::config::get_config_directory()
+        .unwrap_or_else(|| {
+            std::env::current_exe()
+                .ok()
+                .and_then(|p| p.parent().map(|d| d.to_path_buf()))
+                .unwrap_or_else(|| std::path::PathBuf::from("."))
+        });
     let config_path = config_dir.join("chamsae.json");
 
     // 設定を読み込み。
@@ -253,10 +256,7 @@ fn run_settings() -> anyhow::Result<()> {
                                 open_in_notepad(&path);
                             } else {
                                 // デフォルトパスで新規作成して開く。
-                                let exe_dir = std::env::current_exe()
-                                    .ok()
-                                    .and_then(|p| p.parent().map(|d| d.to_path_buf()));
-                                if let Some(dir) = exe_dir {
+                                if let Some(dir) = chamsae::config::get_config_directory() {
                                     let dict_path = dir.join("user_dict.json");
                                     if !dict_path.exists() {
                                         let default_json = r#"{
