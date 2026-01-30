@@ -181,7 +181,16 @@ impl ITfTextInputProcessorEx_Impl for TextService_Impl {
 // === ITfKeyEventSink ===
 
 impl ITfKeyEventSink_Impl for TextService_Impl {
-    fn OnSetFocus(&self, _fforeground: BOOL) -> Result<()> {
+    fn OnSetFocus(&self, fforeground: BOOL) -> Result<()> {
+        if fforeground == FALSE {
+            // フォーカス喪失時: バッファをクリアして候補ウィンドウを非表示。
+            if !self.roman_buffer.borrow().is_empty() {
+                log::info!("Focus lost: clearing composition");
+                self.roman_buffer.borrow_mut().clear();
+                *self.composition.lock().unwrap() = None;
+            }
+            self.candidate_window.hide();
+        }
         Ok(())
     }
 
