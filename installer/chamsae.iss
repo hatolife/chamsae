@@ -5,11 +5,12 @@
 ;   2. InnoSetup Compiler で本スクリプトをコンパイル
 ;      iscc /DMyAppVersion=X.Y.Z installer/chamsae.iss
 ;
-; インストール時:
-;   1. 旧バージョンのDLL登録解除 (regsvr32 /u)
-;   2. 旧バージョンのアンインストール (サイレント)
-;   3. ファイル配置
-;   4. regsvr32 chamsae.dll
+; アップグレード時:
+;   1. 旧DLLのTSF登録解除 (regsvr32 /u)
+;   2. 旧DLLを .old にリネーム (ロック中でも成功)
+;   3. 新ファイル配置
+;   4. regsvr32 chamsae.dll (再登録)
+;   5. .old ファイル削除 (失敗時は次回クリーンアップ)
 ;
 ; アンインストール時: regsvr32 /u chamsae.dll → ファイル削除
 
@@ -39,17 +40,14 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 ; 管理者権限が必要 (regsvr32)
 PrivilegesRequired=admin
-; DLLロック時に再起動を提案。
-RestartIfNeededByRun=yes
 
 [Languages]
 Name: "japanese"; MessagesFile: "compiler:Languages\Japanese.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Files]
-; DLL - restartreplace: 使用中の場合は再起動後に置換。
-Source: "..\build\chamsae.dll"; DestDir: "{app}"; \
-  Flags: ignoreversion restartreplace uninsrestartdelete
+; DLL
+Source: "..\build\chamsae.dll"; DestDir: "{app}"; Flags: ignoreversion
 ; 設定GUI
 Source: "..\build\chamsae_settings.exe"; DestDir: "{app}"; Flags: ignoreversion
 ; CLIツール
@@ -77,31 +75,48 @@ Filename: "regsvr32.exe"; Parameters: "/s /u ""{app}\chamsae.dll"""; \
   Flags: runhidden waituntilterminated
 
 [Code]
-const
-  UninstallRegKey = 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{D4A5B8E1-7C2F-4A3D-9E6B-1F8C0D2A5E7B}_is1';
-
-/// インストール準備: 旧バージョンのDLL登録解除とアンインストール。
+/// インストール準備: 旧DLLリネーム方式でアップグレード。
+///
+/// 1. 旧 .old ファイルを削除 (前回の残り)
+/// 2. 旧DLLのTSF登録を解除 (regsvr32 /u)
+/// 3. 旧DLLを .old にリネーム (ロック中でも成功)
+///
+/// リネーム後、Inno Setup が新DLLを配置。
+/// [Run] セクションで regsvr32 再登録。
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
-  UninstallString: String;
   ResultCode: Integer;
   DllPath: String;
+  OldPath: String;
 begin
   Result := '';
-
-  // 既存DLLのTSFプロファイル登録を解除。
   DllPath := ExpandConstant('{app}\chamsae.dll');
+  OldPath := ExpandConstant('{app}\chamsae.dll.old');
+
+  // 前回の .old ファイルを削除。
+  if FileExists(OldPath) then
+    DeleteFile(OldPath);
+
   if FileExists(DllPath) then
   begin
+    // 旧DLLのTSF登録を解除。
     Exec('regsvr32.exe', '/s /u "' + DllPath + '"',
       '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-  end;
 
-  // 過去バージョンのアンインストーラーをサイレント実行。
-  if RegQueryStringValue(HKLM, UninstallRegKey,
-      'UninstallString', UninstallString) then
+    // 旧DLLをリネーム (ロック中でも成功)。
+    RenameFile(DllPath, OldPath);
+  end;
+end;
+
+/// インストール完了後: .old ファイルの削除を試みる。
+procedure CurStepChanged(CurStep: TSetupStep);
+var
+  OldPath: String;
+begin
+  if CurStep = ssPostInstall then
   begin
-    Exec(RemoveQuotes(UninstallString), '/SILENT /NORESTART',
-      '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+    OldPath := ExpandConstant('{app}\chamsae.dll.old');
+    if FileExists(OldPath) then
+      DeleteFile(OldPath);
   end;
 end;
