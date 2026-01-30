@@ -47,8 +47,14 @@ jobs:
         shell: bash
         run: 7z a "chamsae-v${{ steps.version.outputs.version }}.zip" ./build/*
 
+      - name: Build installer
+        shell: bash
+        run: iscc "/DMyAppVersion=${{ steps.version.outputs.version }}" installer/chamsae.iss
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: chamsae-v${{ steps.version.outputs.version }}.zip
+          files: |
+            chamsae-v${{ steps.version.outputs.version }}.zip
+            build/chamsae-v${{ steps.version.outputs.version }}-setup.exe
           generate_release_notes: true

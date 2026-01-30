@@ -3,12 +3,16 @@
 ; ビルド手順:
 ;   1. make release
 ;   2. InnoSetup Compiler で本スクリプトをコンパイル
+;      iscc /DMyAppVersion=X.Y.Z installer/chamsae.iss
 ;
 ; インストール時: ファイル配置 → regsvr32 chamsae.dll
 ; アンインストール時: regsvr32 /u chamsae.dll → ファイル削除
 
 #define MyAppName "Chamsae Hangul IME"
-#define MyAppVersion "0.5.0"
+; /DMyAppVersion=X.Y.Z で上書き可能。未指定時はデフォルト値を使用。
+#ifndef MyAppVersion
+  #define MyAppVersion "0.6.0"
+#endif
 #define MyAppPublisher "Chamsae"
 #define MyAppURL ""
 #define MyAppExeName "chamsae_settings.exe"
