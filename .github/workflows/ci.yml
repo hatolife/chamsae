@@ -80,8 +80,8 @@ jobs:
         run: 7z a "chamsae-v${{ steps.version.outputs.version }}.zip" ./build/*
 
       - name: Build installer
-        shell: bash
-        run: iscc "/DMyAppVersion=${{ steps.version.outputs.version }}" installer/chamsae.iss
+        shell: cmd
+        run: iscc /DMyAppVersion=${{ steps.version.outputs.version }} installer\chamsae.iss
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
