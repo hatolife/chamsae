@@ -4,6 +4,15 @@
 
 Rust学習を兼ねた自作IMEプロジェクト。
 
+v0.6.5時点で当初の目標を達成した。  
+- ローマ字入力でのハングル入力  
+- 簡単なインストーラー提供  
+- 簡単な設定変更GUI
+
+動作例  
+![Animation](https://github.com/user-attachments/assets/a0423cfd-e968-4f90-bf77-a349fdba6368)
+
+
 ## インストール
 
 ### インストーラー (推奨)
