@@ -1,10 +1,11 @@
 //! Chamsae - ハングルIME ライブラリ。
 //!
 //! ローマ字入力から韓国語ハングル文字への変換を行うIME。
-//! Phase 5: 改善・拡張 (ユーザー辞書、候補ウィンドウ、トレイアイコン、設定画面)。
+//! Phase 6: 実用性向上 (ログ出力、ナビゲーションキー、設定ホットリロード、DPI対応)。
 
 pub mod hangul;
 pub mod config;
+pub mod logger;
 pub mod user_dict;
 
 // Windows専用モジュール。
@@ -46,6 +47,12 @@ extern "system" fn DllMain(
             unsafe {
                 windows::Win32::System::LibraryLoader::DisableThreadLibraryCalls(hinstance)
                     .ok();
+            }
+
+            // ロガーを初期化 (DLLと同じディレクトリにログ出力)。
+            if let Some(dir) = config::get_dll_directory() {
+                logger::init(&dir);
+                log::info!("Chamsae IME DLL loaded");
             }
 
             TRUE

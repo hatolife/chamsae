@@ -13,6 +13,7 @@
 //! - `icon`: アイコンリソース (GDI動的生成)
 
 pub mod candidate_window;
+pub mod dpi;
 pub mod edit_session;
 pub mod icon;
 pub mod key_handler;

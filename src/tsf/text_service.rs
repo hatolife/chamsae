@@ -29,7 +29,7 @@ use crate::hangul::HangulConverter;
 use crate::tsf::candidate_window::CandidateWindow;
 use crate::tsf::edit_session::{CaretPos, EditAction, EditSession};
 use crate::tsf::key_handler;
-use crate::tsf::tray_icon::TrayIcon;
+use crate::tsf::tray_icon::{TrayAction, TrayIcon};
 use crate::user_dict::UserDict;
 
 /// Chamsae TextService。
@@ -51,9 +51,9 @@ pub struct TextService {
     /// ハングル変換器。
     converter: HangulConverter,
     /// IME設定。
-    config: Config,
+    config: RefCell<Config>,
     /// ユーザー辞書。
-    user_dict: UserDict,
+    user_dict: RefCell<UserDict>,
     /// 候補ウィンドウ。
     candidate_window: CandidateWindow,
     /// システムトレイアイコン。
@@ -75,8 +75,8 @@ impl TextService {
             composition: Arc::new(Mutex::new(None)),
             caret_pos: Arc::new(Mutex::new(CaretPos::default())),
             converter: HangulConverter::new(),
-            config,
-            user_dict,
+            config: RefCell::new(config),
+            user_dict: RefCell::new(user_dict),
             candidate_window: CandidateWindow::new(),
             tray_icon: TrayIcon::new(),
             enabled: Cell::new(true),
@@ -114,10 +114,12 @@ impl Drop for TextService {
 
 impl ITfTextInputProcessor_Impl for TextService_Impl {
     fn Activate(&self, ptim: Option<&ITfThreadMgr>, tid: u32) -> Result<()> {
+        log::info!("TextService::Activate (tid={})", tid);
         self.ActivateEx(ptim, tid, 0)
     }
 
     fn Deactivate(&self) -> Result<()> {
+        log::info!("TextService::Deactivate");
         // キーイベントシンクの登録解除。
         let thread_mgr = self.thread_mgr.borrow();
         if let Some(mgr) = thread_mgr.as_ref() {
@@ -241,6 +243,9 @@ impl ITfKeyEventSink_Impl for TextService_Impl {
         wparam: WPARAM,
         _lparam: LPARAM,
     ) -> Result<BOOL> {
+        // トレイアイコンからのアクションを確認。
+        self.check_tray_action();
+
         let vk = wparam.0 as u32;
         let context = match pic {
             Some(c) => c,
@@ -258,6 +263,7 @@ impl ITfKeyEventSink_Impl for TextService_Impl {
             let new_state = !self.enabled.get();
             self.enabled.set(new_state);
             self.tray_icon.update(new_state);
+            log::info!("IME toggled: {}", if new_state { "ON" } else { "OFF" });
             return Ok(TRUE);
         }
 
@@ -306,6 +312,14 @@ impl ITfKeyEventSink_Impl for TextService_Impl {
                 key_handler::VK_SPACE => {
                     self.roman_buffer.borrow_mut().push(' ');
                     self.update_composition(context)?;
+                }
+                // ナビゲーションキー → 自動確定してパススルー。
+                vk if key_handler::is_navigation_key(vk) => {
+                    log::info!("Navigation key (vk=0x{:02X}): auto-commit and passthrough", vk);
+                    self.request_edit_session(context, EditAction::Commit)?;
+                    self.roman_buffer.borrow_mut().clear();
+                    self.candidate_window.hide();
+                    return Ok(FALSE);
                 }
                 // 未対応キー → 自動確定してパススルー。
                 _ => {
@@ -358,7 +372,8 @@ impl ITfCompositionSink_Impl for TextService_Impl {
 impl TextService_Impl {
     /// 設定されたトグルキーか判定する。
     fn is_toggle_key(&self, vk: u32) -> bool {
-        let tk = &self.config.toggle_key;
+        let config = self.config.borrow();
+        let tk = &config.toggle_key;
         if vk != tk.vk {
             return false;
         }
@@ -383,11 +398,13 @@ impl TextService_Impl {
     /// 変換後、候補ウィンドウにテキストを表示する。
     fn update_composition(&self, context: &ITfContext) -> Result<()> {
         let buffer = self.roman_buffer.borrow();
-        let converted = if let Some(dict_value) = self.user_dict.lookup(&buffer) {
+        let user_dict = self.user_dict.borrow();
+        let converted = if let Some(dict_value) = user_dict.lookup(&buffer) {
             dict_value.to_string()
         } else {
             self.converter.convert(&buffer)
         };
+        drop(user_dict);
         let roman_display = buffer.clone();
         let text: Vec<u16> = converted.encode_utf16().collect();
         self.request_edit_session(context, EditAction::Update(text))?;
@@ -397,6 +414,35 @@ impl TextService_Impl {
         let _ = self.candidate_window.show(&converted, &roman_display, pos.x, pos.y);
 
         Ok(())
+    }
+
+    /// 設定とユーザー辞書を再読み込みする。
+    fn reload_config(&self) {
+        log::info!("Reloading config and user dictionary");
+        let new_config = Config::load_from_dll();
+        let new_dict = TextService::load_user_dict(&new_config);
+        *self.config.borrow_mut() = new_config;
+        *self.user_dict.borrow_mut() = new_dict;
+        log::info!("Config and user dictionary reloaded");
+    }
+
+    /// トレイアイコンのアクションを確認して処理する。
+    ///
+    /// OnKeyDown の先頭で呼び出し、トレイメニューからの
+    /// アクション (トグル/再読み込み) を反映する。
+    fn check_tray_action(&self) {
+        match self.tray_icon.poll_action() {
+            TrayAction::None => {}
+            TrayAction::Toggle => {
+                let new_state = !self.enabled.get();
+                self.enabled.set(new_state);
+                self.tray_icon.update(new_state);
+                log::info!("IME toggled via tray: {}", if new_state { "ON" } else { "OFF" });
+            }
+            TrayAction::Reload => {
+                self.reload_config();
+            }
+        }
     }
 
     /// EditSessionを作成してTSFに要求する。

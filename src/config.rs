@@ -142,6 +142,7 @@ impl Config {
 
         if !path.exists() {
             // デフォルト設定ファイルを新規作成。
+            log::info!("Config file not found, creating default: {}", path.display());
             let default_json = ConfigJson::default();
             if let Ok(content) = serde_json::to_string_pretty(&default_json) {
                 let _ = std::fs::write(&path, content);
@@ -151,18 +152,33 @@ impl Config {
 
         let content = match std::fs::read_to_string(&path) {
             Ok(c) => c,
-            Err(_) => return Self::default(),
+            Err(e) => {
+                log::warn!("Failed to read config file: {}", e);
+                return Self::default();
+            }
         };
 
         let json: ConfigJson = match serde_json::from_str(&content) {
             Ok(j) => j,
-            Err(_) => return Self::default(),
+            Err(e) => {
+                log::warn!("Failed to parse config JSON: {}", e);
+                return Self::default();
+            }
         };
 
         let vk = match key_name_to_vk(&json.toggle_key.key) {
             Some(v) => v,
-            None => return Self::default(),
+            None => {
+                log::warn!("Unknown key name: {}", json.toggle_key.key);
+                return Self::default();
+            }
         };
+
+        log::info!(
+            "Config loaded: toggle={}(0x{:02X}) shift={} ctrl={} alt={}",
+            json.toggle_key.key, vk,
+            json.toggle_key.shift, json.toggle_key.ctrl, json.toggle_key.alt
+        );
 
         Self {
             toggle_key: ToggleKey {

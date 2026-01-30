@@ -45,6 +45,7 @@ const TRAY_ICON_ID: u32 = 1;
 const IDM_TOGGLE: u16 = 1001;
 const IDM_SETTINGS: u16 = 1002;
 const IDM_ABOUT: u16 = 1003;
+const IDM_RELOAD: u16 = 1004;
 
 /// トレイアイコンのウィンドウクラス名。
 const TRAY_CLASS_NAME: PCWSTR = w!("ChamsaeTrayIconClass");
@@ -59,6 +60,8 @@ pub enum TrayAction {
     None,
     /// IME ON/OFF トグル。
     Toggle,
+    /// 設定の再読み込み。
+    Reload,
 }
 
 /// グローバルなトレイアイコンコールバック結果。
@@ -184,6 +187,7 @@ impl TrayIcon {
 
             let _ = Shell_NotifyIconW(NIM_ADD, &nid);
             self.added.set(true);
+            log::info!("Tray icon added (enabled={})", enabled);
 
             icon::destroy_icon(hicon);
         }
@@ -301,6 +305,7 @@ unsafe fn show_context_menu(hwnd: HWND) {
 
     let _ = AppendMenuW(hmenu, MF_STRING, IDM_TOGGLE as usize, toggle_text);
     let _ = AppendMenuW(hmenu, MF_SEPARATOR, 0, None);
+    let _ = AppendMenuW(hmenu, MF_STRING, IDM_RELOAD as usize, w!("設定の再読み込み"));
     let _ = AppendMenuW(hmenu, MF_STRING, IDM_SETTINGS as usize, w!("設定..."));
     let _ = AppendMenuW(hmenu, MF_STRING, IDM_ABOUT as usize, w!("バージョン情報"));
 
@@ -385,10 +390,16 @@ extern "system" fn tray_window_proc(
                     IDM_TOGGLE => {
                         *TRAY_RESULT.lock().unwrap() = TrayAction::Toggle;
                     }
+                    IDM_RELOAD => {
+                        log::info!("Tray: reload config requested");
+                        *TRAY_RESULT.lock().unwrap() = TrayAction::Reload;
+                    }
                     IDM_SETTINGS => {
+                        log::info!("Tray: launching settings");
                         launch_settings();
                     }
                     IDM_ABOUT => {
+                        log::info!("Tray: showing about dialog");
                         show_about();
                     }
                     _ => {}

@@ -45,6 +45,13 @@ fn run_settings() -> anyhow::Result<()> {
     use windows::Win32::Graphics::Gdi::{GetStockObject, HBRUSH, WHITE_BRUSH};
     use windows::Win32::UI::WindowsAndMessaging::*;
 
+    // Per-Monitor DPI Awareness v2を有効化。
+    unsafe {
+        let _ = windows::Win32::UI::HiDpi::SetProcessDpiAwarenessContext(
+            windows::Win32::UI::HiDpi::DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2,
+        );
+    }
+
     /// 設定ファイルJSONの構造。
     #[derive(serde::Serialize, serde::Deserialize)]
     struct ConfigJson {
@@ -207,7 +214,7 @@ fn run_settings() -> anyhow::Result<()> {
                                 if std::fs::write(&state.config_path, json).is_ok() {
                                     MessageBoxW(
                                         hwnd,
-                                        w!("設定を保存しました。\nIMEを再起動すると反映されます。"),
+                                        w!("設定を保存しました。\nトレイメニューの「設定の再読み込み」で反映できます。"),
                                         w!("Chamsae 設定"),
                                         MB_OK | MB_ICONINFORMATION,
                                     );

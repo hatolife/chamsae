@@ -16,12 +16,13 @@
 use std::cell::Cell;
 
 use windows::core::{w, Result, PCWSTR};
-use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, RECT, WPARAM};
+use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, POINT, RECT, WPARAM};
 use windows::Win32::Graphics::Gdi::{
     BeginPaint, CreateFontIndirectW, CreateSolidBrush, DeleteObject,
-    EndPaint, FillRect, GetTextExtentPoint32W, SelectObject,
-    SetBkMode, SetTextColor, TextOutW,
-    HBRUSH, HFONT, LOGFONTW, PAINTSTRUCT, TRANSPARENT,
+    EndPaint, FillRect, GetMonitorInfoW, GetTextExtentPoint32W,
+    MonitorFromPoint, SelectObject, SetBkMode, SetTextColor, TextOutW,
+    HBRUSH, HFONT, LOGFONTW, MONITOR_DEFAULTTONEAREST, MONITORINFO,
+    PAINTSTRUCT, TRANSPARENT,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
     CreateWindowExW, DefWindowProcW, DestroyWindow,
@@ -32,6 +33,8 @@ use windows::Win32::UI::WindowsAndMessaging::{
     WNDCLASSW, WS_POPUP,
     WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TOPMOST,
 };
+
+use super::dpi;
 
 /// 候補ウィンドウのクラス名。
 const CANDIDATE_CLASS_NAME: PCWSTR = w!("ChamsaeCandidateWindow");
@@ -70,6 +73,8 @@ pub struct CandidateWindow {
 /// SetWindowLongPtrで保存し、WM_PAINTで取得する。
 static HANGUL_TEXT: std::sync::Mutex<String> = std::sync::Mutex::new(String::new());
 static ROMAN_TEXT: std::sync::Mutex<String> = std::sync::Mutex::new(String::new());
+/// WM_PAINT用のDPI値。
+static PAINT_DPI: std::sync::Mutex<u32> = std::sync::Mutex::new(96);
 
 impl CandidateWindow {
     /// 新しい候補ウィンドウを作成する。
@@ -156,12 +161,16 @@ impl CandidateWindow {
         // テキストを静的変数に保存 (WM_PAINTで使用)。
         *HANGUL_TEXT.lock().unwrap() = hangul.to_string();
         *ROMAN_TEXT.lock().unwrap() = roman.to_string();
+        *PAINT_DPI.lock().unwrap() = dpi::get_dpi_for_window(hwnd);
 
         // ウィンドウサイズを計算。
         let (width, height) = self.calculate_size(hangul, roman);
 
+        // モニター領域内にクランプ。
+        let (cx, cy) = Self::clamp_to_monitor(x, y, width, height);
+
         unsafe {
-            let _ = MoveWindow(hwnd, x, y, width, height, true);
+            let _ = MoveWindow(hwnd, cx, cy, width, height, true);
             let _ = ShowWindow(hwnd, SW_SHOWNOACTIVATE);
 
             // 再描画を要求。
@@ -199,18 +208,21 @@ impl CandidateWindow {
             return (100, 50);
         }
 
+        let window_dpi = dpi::get_dpi_for_window(hwnd);
+        let scaled_padding = dpi::scale(PADDING, window_dpi);
+
         unsafe {
             let hdc = windows::Win32::Graphics::Gdi::GetDC(hwnd);
 
-            // ハングルフォントでテキスト幅を計算。
-            let hangul_font = create_font(HANGUL_FONT_SIZE);
+            // DPIスケーリングしたフォントでテキスト幅を計算。
+            let hangul_font = create_font(dpi::scale(HANGUL_FONT_SIZE, window_dpi));
             let old_font = SelectObject(hdc, hangul_font);
             let hangul_wide: Vec<u16> = hangul.encode_utf16().collect();
             let mut hangul_size = windows::Win32::Foundation::SIZE::default();
             let _ = GetTextExtentPoint32W(hdc, &hangul_wide, &mut hangul_size);
 
             // ローマ字フォントでテキスト幅を計算。
-            let roman_font = create_font(ROMAN_FONT_SIZE);
+            let roman_font = create_font(dpi::scale(ROMAN_FONT_SIZE, window_dpi));
             let _ = SelectObject(hdc, roman_font);
             let roman_wide: Vec<u16> = roman.encode_utf16().collect();
             let mut roman_size = windows::Win32::Foundation::SIZE::default();
@@ -221,14 +233,50 @@ impl CandidateWindow {
             let _ = DeleteObject(roman_font);
             let _ = windows::Win32::Graphics::Gdi::ReleaseDC(hwnd, hdc);
 
-            let width = std::cmp::max(hangul_size.cx, roman_size.cx) + PADDING * 2 + 2;
-            let height = hangul_size.cy + roman_size.cy + PADDING * 2 + 4;
+            let width = std::cmp::max(hangul_size.cx, roman_size.cx) + scaled_padding * 2 + 2;
+            let height = hangul_size.cy + roman_size.cy + scaled_padding * 2 + 4;
 
-            // 最小サイズ。
-            let width = std::cmp::max(width, 60);
-            let height = std::cmp::max(height, 40);
+            // 最小サイズ (DPIスケーリング済み)。
+            let width = std::cmp::max(width, dpi::scale(60, window_dpi));
+            let height = std::cmp::max(height, dpi::scale(40, window_dpi));
 
             (width, height)
+        }
+    }
+
+    /// ウィンドウ位置をモニター領域内にクランプする。
+    fn clamp_to_monitor(x: i32, y: i32, width: i32, height: i32) -> (i32, i32) {
+        unsafe {
+            let pt = POINT { x, y };
+            let hmonitor = MonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST);
+            let mut mi = MONITORINFO {
+                cbSize: std::mem::size_of::<MONITORINFO>() as u32,
+                ..Default::default()
+            };
+            if GetMonitorInfoW(hmonitor, &mut mi).as_bool() {
+                let work = mi.rcWork;
+                let mut cx = x;
+                let mut cy = y;
+
+                // 右端を超える場合は左にずらす。
+                if cx + width > work.right {
+                    cx = work.right - width;
+                }
+                // 下端を超える場合は上にずらす。
+                if cy + height > work.bottom {
+                    cy = work.bottom - height;
+                }
+                // 左端・上端を超える場合はクランプ。
+                if cx < work.left {
+                    cx = work.left;
+                }
+                if cy < work.top {
+                    cy = work.top;
+                }
+                (cx, cy)
+            } else {
+                (x, y)
+            }
         }
     }
 }
@@ -271,6 +319,9 @@ extern "system" fn candidate_window_proc(
                 let mut ps = PAINTSTRUCT::default();
                 let hdc = BeginPaint(hwnd, &mut ps);
 
+                let paint_dpi = *PAINT_DPI.lock().unwrap();
+                let scaled_padding = dpi::scale(PADDING, paint_dpi);
+
                 // 背景を塗る。
                 let mut rc = RECT::default();
                 let _ = windows::Win32::UI::WindowsAndMessaging::GetClientRect(hwnd, &mut rc);
@@ -289,21 +340,21 @@ extern "system" fn candidate_window_proc(
 
                 SetBkMode(hdc, TRANSPARENT);
 
-                // 変換結果テキスト (大きめフォント)。
-                let hangul_font = create_font(HANGUL_FONT_SIZE);
+                // 変換結果テキスト (大きめフォント、DPIスケーリング済み)。
+                let hangul_font = create_font(dpi::scale(HANGUL_FONT_SIZE, paint_dpi));
                 let old_font = SelectObject(hdc, hangul_font);
                 SetTextColor(hdc, windows::Win32::Foundation::COLORREF(HANGUL_TEXT_COLOR));
                 let hangul_text = HANGUL_TEXT.lock().unwrap();
                 let hangul_wide: Vec<u16> = hangul_text.encode_utf16().collect();
                 drop(hangul_text);
-                let _ = TextOutW(hdc, PADDING + 1, PADDING + 1, &hangul_wide);
+                let _ = TextOutW(hdc, scaled_padding + 1, scaled_padding + 1, &hangul_wide);
 
                 // ハングルテキストの高さを取得。
                 let mut hangul_size = windows::Win32::Foundation::SIZE::default();
                 let _ = GetTextExtentPoint32W(hdc, &hangul_wide, &mut hangul_size);
 
-                // ローマ字テキスト (小さめフォント)。
-                let roman_font = create_font(ROMAN_FONT_SIZE);
+                // ローマ字テキスト (小さめフォント、DPIスケーリング済み)。
+                let roman_font = create_font(dpi::scale(ROMAN_FONT_SIZE, paint_dpi));
                 let _ = SelectObject(hdc, roman_font);
                 SetTextColor(hdc, windows::Win32::Foundation::COLORREF(ROMAN_TEXT_COLOR));
                 let roman_text = ROMAN_TEXT.lock().unwrap();
@@ -311,8 +362,8 @@ extern "system" fn candidate_window_proc(
                 drop(roman_text);
                 let _ = TextOutW(
                     hdc,
-                    PADDING + 1,
-                    PADDING + 1 + hangul_size.cy + 2,
+                    scaled_padding + 1,
+                    scaled_padding + 1 + hangul_size.cy + 2,
                     &roman_wide,
                 );
 
