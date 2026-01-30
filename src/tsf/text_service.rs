@@ -26,8 +26,11 @@ use windows::Win32::UI::TextServices::{
 use crate::com::dll_module;
 use crate::config::Config;
 use crate::hangul::HangulConverter;
-use crate::tsf::edit_session::{EditAction, EditSession};
+use crate::tsf::candidate_window::CandidateWindow;
+use crate::tsf::edit_session::{CaretPos, EditAction, EditSession};
 use crate::tsf::key_handler;
+use crate::tsf::tray_icon::TrayIcon;
+use crate::user_dict::UserDict;
 
 /// Chamsae TextService。
 ///
@@ -43,10 +46,18 @@ pub struct TextService {
     roman_buffer: RefCell<String>,
     /// アクティブなコンポジション (TextServiceとEditSessionで共有)。
     composition: Arc<Mutex<Option<ITfComposition>>>,
+    /// キャレット位置 (EditSessionが更新)。
+    caret_pos: Arc<Mutex<CaretPos>>,
     /// ハングル変換器。
     converter: HangulConverter,
     /// IME設定。
     config: Config,
+    /// ユーザー辞書。
+    user_dict: UserDict,
+    /// 候補ウィンドウ。
+    candidate_window: CandidateWindow,
+    /// システムトレイアイコン。
+    tray_icon: TrayIcon,
     /// IME有効状態。falseの場合はすべてのキーをパススルーする。
     enabled: Cell<bool>,
 }
@@ -55,14 +66,40 @@ impl TextService {
     /// 新しいTextServiceを作成する。
     pub fn new() -> Self {
         dll_module::increment_object_count();
+        let config = Config::load_from_dll();
+        let user_dict = Self::load_user_dict(&config);
         Self {
             thread_mgr: RefCell::new(None),
             client_id: Cell::new(0),
             roman_buffer: RefCell::new(String::new()),
             composition: Arc::new(Mutex::new(None)),
+            caret_pos: Arc::new(Mutex::new(CaretPos::default())),
             converter: HangulConverter::new(),
-            config: Config::load_from_dll(),
+            config,
+            user_dict,
+            candidate_window: CandidateWindow::new(),
+            tray_icon: TrayIcon::new(),
             enabled: Cell::new(true),
+        }
+    }
+
+    /// ユーザー辞書を読み込む。
+    fn load_user_dict(config: &Config) -> UserDict {
+        if let Some(ref path_str) = config.user_dict_path {
+            UserDict::load(std::path::Path::new(path_str))
+        } else {
+            // デフォルト: DLLと同じディレクトリの user_dict.json。
+            match crate::config::get_dll_directory() {
+                Some(dir) => {
+                    let path = dir.join("user_dict.json");
+                    if path.exists() {
+                        UserDict::load(&path)
+                    } else {
+                        UserDict::empty()
+                    }
+                }
+                None => UserDict::empty(),
+            }
         }
     }
 }
@@ -90,6 +127,12 @@ impl ITfTextInputProcessor_Impl for TextService_Impl {
             }
         }
         drop(thread_mgr);
+
+        // 候補ウィンドウを破棄。
+        self.candidate_window.destroy();
+
+        // トレイアイコンを削除。
+        self.tray_icon.destroy();
 
         // 状態をクリア。
         self.roman_buffer.borrow_mut().clear();
@@ -125,6 +168,9 @@ impl ITfTextInputProcessorEx_Impl for TextService_Impl {
             let sink: ITfKeyEventSink = self.to_interface();
             keystroke_mgr.AdviseKeyEventSink(tid, &sink, TRUE)?;
         }
+
+        // トレイアイコンを追加。
+        let _ = self.tray_icon.add(self.enabled.get());
 
         Ok(())
     }
@@ -207,8 +253,11 @@ impl ITfKeyEventSink_Impl for TextService_Impl {
             if !self.roman_buffer.borrow().is_empty() {
                 self.request_edit_session(context, EditAction::Commit)?;
                 self.roman_buffer.borrow_mut().clear();
+                self.candidate_window.hide();
             }
-            self.enabled.set(!self.enabled.get());
+            let new_state = !self.enabled.get();
+            self.enabled.set(new_state);
+            self.tray_icon.update(new_state);
             return Ok(TRUE);
         }
 
@@ -241,6 +290,7 @@ impl ITfKeyEventSink_Impl for TextService_Impl {
                     self.roman_buffer.borrow_mut().pop();
                     if self.roman_buffer.borrow().is_empty() {
                         self.request_edit_session(context, EditAction::Cancel)?;
+                        self.candidate_window.hide();
                     } else {
                         self.update_composition(context)?;
                     }
@@ -298,6 +348,7 @@ impl ITfCompositionSink_Impl for TextService_Impl {
     ) -> Result<()> {
         self.roman_buffer.borrow_mut().clear();
         *self.composition.lock().unwrap() = None;
+        self.candidate_window.hide();
         Ok(())
     }
 }
@@ -326,11 +377,26 @@ impl TextService_Impl {
     }
 
     /// バッファの内容をハングルに変換してコンポジションを更新する。
+    ///
+    /// ユーザー辞書に完全一致するエントリがあればそちらを使用し、
+    /// なければハングル変換エンジンで変換する。
+    /// 変換後、候補ウィンドウにテキストを表示する。
     fn update_composition(&self, context: &ITfContext) -> Result<()> {
         let buffer = self.roman_buffer.borrow();
-        let hangul = self.converter.convert(&buffer);
-        let text: Vec<u16> = hangul.encode_utf16().collect();
-        self.request_edit_session(context, EditAction::Update(text))
+        let converted = if let Some(dict_value) = self.user_dict.lookup(&buffer) {
+            dict_value.to_string()
+        } else {
+            self.converter.convert(&buffer)
+        };
+        let roman_display = buffer.clone();
+        let text: Vec<u16> = converted.encode_utf16().collect();
+        self.request_edit_session(context, EditAction::Update(text))?;
+
+        // 候補ウィンドウを表示。
+        let pos = self.caret_pos.lock().unwrap().clone();
+        let _ = self.candidate_window.show(&converted, &roman_display, pos.x, pos.y);
+
+        Ok(())
     }
 
     /// EditSessionを作成してTSFに要求する。
@@ -340,6 +406,7 @@ impl TextService_Impl {
             self.composition.clone(),
             self.to_interface::<ITfCompositionSink>(),
             action,
+            self.caret_pos.clone(),
         );
 
         let session_iface: ITfEditSession = session.into_interface();

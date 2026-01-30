@@ -7,9 +7,11 @@
 use std::sync::{Arc, Mutex};
 
 use windows::core::{implement, Interface, Result};
+use windows::Win32::Foundation::RECT;
 use windows::Win32::UI::TextServices::{
     ITfComposition, ITfCompositionSink, ITfContext, ITfContextComposition,
-    ITfEditSession, ITfEditSession_Impl, ITfInsertAtSelection, TF_IAS_QUERYONLY,
+    ITfEditSession, ITfEditSession_Impl, ITfInsertAtSelection,
+    TF_IAS_QUERYONLY,
 };
 
 /// EditSessionのアクション。
@@ -22,6 +24,14 @@ pub enum EditAction {
     Cancel,
 }
 
+/// キャレット位置情報 (スクリーン座標)。
+#[derive(Clone, Default)]
+pub struct CaretPos {
+    pub x: i32,
+    pub y: i32,
+    pub height: i32,
+}
+
 /// TSF EditSession。
 ///
 /// DoEditSessionでコンポジションの開始・更新・終了を行う。
@@ -32,6 +42,8 @@ pub struct EditSession {
     composition: Arc<Mutex<Option<ITfComposition>>>,
     composition_sink: ITfCompositionSink,
     action: EditAction,
+    /// キャレット位置 (Update時にEditSessionが書き込む)。
+    caret_pos: Arc<Mutex<CaretPos>>,
 }
 
 impl EditSession {
@@ -41,12 +53,14 @@ impl EditSession {
         composition: Arc<Mutex<Option<ITfComposition>>>,
         composition_sink: ITfCompositionSink,
         action: EditAction,
+        caret_pos: Arc<Mutex<CaretPos>>,
     ) -> Self {
         Self {
             context,
             composition,
             composition_sink,
             action,
+            caret_pos,
         }
     }
 
@@ -90,6 +104,18 @@ impl EditSession_Impl {
             unsafe {
                 let range = comp.GetRange()?;
                 range.SetText(ec, 0, text)?;
+
+                // キャレット位置を取得。
+                if let Ok(view) = self.context.GetActiveView() {
+                    let mut rc = RECT::default();
+                    let mut clipped = windows::Win32::Foundation::BOOL::default();
+                    if view.GetTextExt(ec, &range, &mut rc, &mut clipped).is_ok() {
+                        let mut pos = self.caret_pos.lock().unwrap();
+                        pos.x = rc.left;
+                        pos.y = rc.bottom;
+                        pos.height = rc.bottom - rc.top;
+                    }
+                }
             }
         }
 

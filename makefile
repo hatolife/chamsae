@@ -1,6 +1,6 @@
 VERSION := $(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[0].version')
 
-.PHONY: all release build-debug build-release build-dll cp-release zip-release test clean
+.PHONY: all release build-debug build-release build-dll cp-release zip-release test clean installer
 
 all:
 	make build-debug
@@ -20,6 +20,7 @@ cp-release:
 	rm -rf ./build
 	mkdir -p ./build
 	cp -rf target/x86_64-pc-windows-gnu/release/chamsae.exe ./build
+	cp -rf target/x86_64-pc-windows-gnu/release/chamsae_settings.exe ./build
 	cp -rf target/x86_64-pc-windows-gnu/release/chamsae.dll ./build
 	cp -rf src/bat/*.bat ./build
 	cd ./build && ./chamsae.exe -t
@@ -29,3 +30,6 @@ test:
 	cargo test
 clean:
 	cargo clean
+installer:
+	@echo "InnoSetupでinstaller/chamsae.issをコンパイルしてください。"
+	@echo "出力先: build/chamsae-v$(VERSION)-setup.exe"

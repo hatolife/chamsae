@@ -1,10 +1,11 @@
 //! Chamsae - ハングルIME ライブラリ。
 //!
 //! ローマ字入力から韓国語ハングル文字への変換を行うIME。
-//! Phase 3: TSF IME実装。
+//! Phase 5: 改善・拡張 (ユーザー辞書、候補ウィンドウ、トレイアイコン、設定画面)。
 
 pub mod hangul;
 pub mod config;
+pub mod user_dict;
 
 // Windows専用モジュール。
 #[cfg(windows)]

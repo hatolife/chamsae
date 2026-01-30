@@ -32,6 +32,8 @@ pub struct Languages {
 pub struct Config {
     pub toggle_key: ToggleKey,
     pub languages: Languages,
+    /// ユーザー辞書ファイルパス。
+    pub user_dict_path: Option<String>,
 }
 
 /// JSON設定ファイルのトグルキー定義。
@@ -61,10 +63,12 @@ impl Default for LanguagesJson {
 
 /// JSON設定ファイルのルート構造。
 #[derive(Serialize, Deserialize)]
-struct ConfigJson {
+pub(crate) struct ConfigJson {
     toggle_key: ToggleKeyJson,
     #[serde(default)]
     languages: LanguagesJson,
+    #[serde(default)]
+    user_dict_path: Option<String>,
 }
 
 /// キー名文字列を仮想キーコードに変換する。
@@ -105,6 +109,7 @@ impl Default for ConfigJson {
                 japanese: true,
                 korean: false,
             },
+            user_dict_path: None,
         }
     }
 }
@@ -123,6 +128,7 @@ impl Config {
                 japanese: true,
                 korean: false,
             },
+            user_dict_path: None,
         }
     }
 
@@ -169,6 +175,7 @@ impl Config {
                 japanese: json.languages.japanese,
                 korean: json.languages.korean,
             },
+            user_dict_path: json.user_dict_path,
         }
     }
 
@@ -184,7 +191,7 @@ impl Config {
 
 /// DLLモジュールのディレクトリパスを取得する。
 #[cfg(windows)]
-fn get_dll_directory() -> Option<std::path::PathBuf> {
+pub(crate) fn get_dll_directory() -> Option<std::path::PathBuf> {
     use crate::com::dll_module;
 
     let hmodule = dll_module::get_module_handle();
