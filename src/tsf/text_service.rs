@@ -287,6 +287,7 @@ impl ITfKeyEventSink_Impl for TextService_Impl {
             if !self.roman_buffer.borrow().is_empty() {
                 self.request_edit_session(context, EditAction::Commit)?;
                 self.roman_buffer.borrow_mut().clear();
+                self.candidate_window.hide();
             }
             return Ok(FALSE);
         }
@@ -313,10 +314,12 @@ impl ITfKeyEventSink_Impl for TextService_Impl {
                 key_handler::VK_RETURN => {
                     self.request_edit_session(context, EditAction::Commit)?;
                     self.roman_buffer.borrow_mut().clear();
+                    self.candidate_window.hide();
                 }
                 key_handler::VK_ESCAPE => {
                     self.request_edit_session(context, EditAction::Cancel)?;
                     self.roman_buffer.borrow_mut().clear();
+                    self.candidate_window.hide();
                 }
                 key_handler::VK_SPACE => {
                     self.roman_buffer.borrow_mut().push(' ');
@@ -334,6 +337,7 @@ impl ITfKeyEventSink_Impl for TextService_Impl {
                 _ => {
                     self.request_edit_session(context, EditAction::Commit)?;
                     self.roman_buffer.borrow_mut().clear();
+                    self.candidate_window.hide();
                     return Ok(FALSE);
                 }
             }
