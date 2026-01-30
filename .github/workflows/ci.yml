@@ -25,31 +25,28 @@ jobs:
         run: cargo test
 
   build:
-    name: Build (Windows cross)
-    runs-on: ubuntu-latest
+    name: Build (Windows)
+    runs-on: windows-latest
     needs: test
     steps:
       - uses: actions/checkout@v4
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: x86_64-pc-windows-gnu
-
-      - name: Install mingw-w64
-        run: sudo apt-get update && sudo apt-get install -y gcc-mingw-w64-x86-64
 
       - uses: Swatinem/rust-cache@v2
 
       - name: Build release
-        run: cargo build --release --target x86_64-pc-windows-gnu
+        shell: bash
+        run: cargo build --release --message-format=json | jq -r 'select(.executable) | .executable'
 
       - name: Collect artifacts
+        shell: bash
         run: |
           mkdir -p build
-          cp target/x86_64-pc-windows-gnu/release/chamsae.exe build/
-          cp target/x86_64-pc-windows-gnu/release/chamsae_settings.exe build/
-          cp target/x86_64-pc-windows-gnu/release/chamsae.dll build/
+          cp target/release/chamsae.exe build/
+          cp target/release/chamsae_settings.exe build/
+          cp target/release/chamsae.dll build/
           cp src/bat/*.bat build/
 
       - name: Upload artifacts
