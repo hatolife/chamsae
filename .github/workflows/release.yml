@@ -57,4 +57,5 @@ jobs:
           files: |
             chamsae-v${{ steps.version.outputs.version }}.zip
             build/chamsae-v${{ steps.version.outputs.version }}-setup.exe
+          prerelease: ${{ contains(github.ref_name, 'rc') }}
           generate_release_notes: true
