@@ -41,11 +41,11 @@ jobs:
           cp target/release/chamsae_settings.exe build/
           cp target/release/chamsae.dll build/
           cp src/bat/*.bat build/
+          cd build && ./chamsae.exe -t
 
       - name: Create ZIP
         shell: bash
-        working-directory: build
-        run: 7z a ../chamsae-v${{ steps.version.outputs.version }}.zip .
+        run: 7z a "chamsae-v${{ steps.version.outputs.version }}.zip" ./build/*
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

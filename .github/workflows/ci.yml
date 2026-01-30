@@ -60,9 +60,10 @@ jobs:
         shell: bash
         run: cargo build --release --message-format=json | jq -r 'select(.executable) | .executable'
 
-      - name: List build outputs
+      - name: Extract version
+        id: version
         shell: bash
-        run: ls -la target/release/*.exe target/release/*.dll 2>/dev/null || echo "No exe/dll found"
+        run: echo "version=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[0].version')" >> "$GITHUB_OUTPUT"
 
       - name: Collect artifacts
         shell: bash
@@ -72,9 +73,14 @@ jobs:
           cp target/release/chamsae_settings.exe build/
           cp target/release/chamsae.dll build/
           cp src/bat/*.bat build/
+          cd build && ./chamsae.exe -t
+
+      - name: Create ZIP
+        shell: bash
+        run: 7z a "chamsae-v${{ steps.version.outputs.version }}.zip" ./build/*
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: chamsae-windows
-          path: build/
+          name: chamsae-v${{ steps.version.outputs.version }}
+          path: chamsae-v${{ steps.version.outputs.version }}.zip
