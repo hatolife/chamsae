@@ -124,6 +124,8 @@ echo "han gug eo" | ./build/chamsae.exe
 | 6.4 | DPI対応・マルチモニター (候補ウィンドウ・設定画面) | ✅ |
 | 6.6 | ログ出力 (ファイルベースロガー) | ✅ |
 
+※ 6.2 (複数候補表示・選択) と 6.5 (コンポジションプレビュー) は Phase 7 に移行。
+
 ### Phase 7: 入力機能強化
 
 | マイルストーン | 内容 | 優先度 |
@@ -203,6 +205,7 @@ rustup target add x86_64-pc-windows-gnu
 | `make build-release` | リリースビルド |
 | `make build-dll` | DLLのみリリースビルド |
 | `make cp-release` | リリース成果物を `build/` にコピー (exe, dll, bat, chamsae.json) |
+| `make zip-release` | `build/` をZIP化 (`chamsae-v{VERSION}.zip`) |
 | `make test` | `cargo test` 実行 |
 | `make clean` | `cargo clean` 実行 |
 | `make installer` | InnoSetup手動コンパイル手順の表示 |

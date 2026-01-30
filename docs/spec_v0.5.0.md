@@ -264,11 +264,11 @@ Win32ウィンドウベースの設定GUI。`chamsae.json` を読み書きする
 |-------|---------|------|------|
 | `test` | ubuntu-latest | - | `cargo test` (67テスト) |
 | `cross-build` | ubuntu-latest | test | mingw クロスコンパイル検証 |
-| `build` | windows-latest | test | ネイティブビルド + ZIP作成 + アーティファクト |
+| `build` | windows-latest | test | ネイティブビルド + ZIP作成 + インストーラー作成 + アーティファクト |
 
 #### build ジョブの成果物
 
-`make release` 相当のZIPをアーティファクトとして登録:
+`make release` 相当のZIP + InnoSetupインストーラーをアーティファクトとして登録:
 
 ```
 chamsae-v{VERSION}.zip
@@ -278,13 +278,15 @@ chamsae-v{VERSION}.zip
 ├── chamsae.json   (テンプレート自動生成)
 ├── install.bat
 └── uninstall.bat
+
+chamsae-v{VERSION}-setup.exe   (InnoSetupインストーラー)
 ```
 
 ### Release ワークフロー (`.github/workflows/release.yml`)
 
 #### トリガー
 
-- `push` tags: `v*` (例: `v0.5.0`)
+- `push` tags: `v*` (例: `v0.6.0`)
 
 #### 処理
 
@@ -292,7 +294,8 @@ chamsae-v{VERSION}.zip
 2. リリースビルド (Windows)
 3. 成果物収集 + `chamsae.exe -t` (設定テンプレート生成)
 4. `chamsae-v{VERSION}.zip` 作成
-5. GitHub Release作成 + ZIPアップロード
+5. `iscc` でインストーラー (`chamsae-v{VERSION}-setup.exe`) 作成
+6. GitHub Release作成 + ZIP・インストーラーアップロード (rcタグ時はpre-release)
 
 ---
 
