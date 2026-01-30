@@ -1,0 +1,55 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  release:
+    name: Build and Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-gnu
+
+      - name: Install mingw-w64
+        run: sudo apt-get update && sudo apt-get install -y gcc-mingw-w64-x86-64
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Run tests
+        run: cargo test
+
+      - name: Build release
+        run: cargo build --release --target x86_64-pc-windows-gnu
+
+      - name: Extract version
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Collect artifacts
+        run: |
+          mkdir -p build
+          cp target/x86_64-pc-windows-gnu/release/chamsae.exe build/
+          cp target/x86_64-pc-windows-gnu/release/chamsae_settings.exe build/
+          cp target/x86_64-pc-windows-gnu/release/chamsae.dll build/
+          cp src/bat/*.bat build/
+
+      - name: Create ZIP
+        working-directory: build
+        run: zip -r ../chamsae-v${{ steps.version.outputs.version }}.zip .
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: chamsae-v${{ steps.version.outputs.version }}.zip
+          generate_release_notes: true
