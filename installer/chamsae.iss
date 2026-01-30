@@ -17,7 +17,7 @@
 #define MyAppName "Chamsae Hangul IME"
 ; /DMyAppVersion=X.Y.Z で上書き可能。未指定時はデフォルト値を使用。
 #ifndef MyAppVersion
-  #define MyAppVersion "0.6.0"
+  #define MyAppVersion "0.6.5"
 #endif
 #define MyAppPublisher "Chamsae"
 #define MyAppURL ""

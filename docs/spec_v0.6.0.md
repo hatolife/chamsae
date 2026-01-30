@@ -222,6 +222,123 @@ pub fn scale(value: i32, dpi: u32) -> i32
 
 ---
 
+## v0.6.1 設定GUI改善・設定ディレクトリ移行
+
+### 設定GUIコンソール非表示
+
+`settings.rs` に `#![cfg_attr(windows, windows_subsystem = "windows")]` を追加し、
+設定画面起動時にコマンドプロンプトウィンドウが表示されないようにした。
+
+### 背景色統一
+
+`WM_CTLCOLORSTATIC` / `WM_CTLCOLORBTN` メッセージのハンドラを追加し、
+子コントロールの背景色をウィンドウ背景色 (白) と統一した。
+
+### 設定ディレクトリ移行
+
+設定ファイル・ユーザー辞書・ログファイルの保存先を DLLディレクトリから `%APPDATA%\Chamsae\` に移行。
+`Program Files` 以下ではユーザー権限でファイル書き込みができないため。
+
+| ファイル | 旧パス | 新パス |
+|---------|--------|--------|
+| 設定 | `<DLL_DIR>\chamsae.json` | `%APPDATA%\Chamsae\chamsae.json` |
+| ユーザー辞書 | `<DLL_DIR>\user_dict.json` | `%APPDATA%\Chamsae\user_dict.json` |
+| ログ | `<DLL_DIR>\chamsae.log` | `%APPDATA%\Chamsae\chamsae.log` |
+
+### 変更ファイル
+
+| ファイル | 変更内容 |
+|---------|---------|
+| `src/config.rs` | `get_config_directory()` 追加 (`%APPDATA%\Chamsae\`、なければ作成) |
+| `src/lib.rs` | ロガー初期化を `get_config_directory()` に変更 |
+| `src/tsf/text_service.rs` | ユーザー辞書パスを `get_config_directory()` に変更 |
+| `src/bin/settings.rs` | コンソール非表示、背景色統一、設定/辞書パスを `get_config_directory()` に変更 |
+
+---
+
+## v0.6.4 候補ウィンドウ表示修正
+
+### フォーカス喪失時
+
+`OnSetFocus(FALSE)` で変換バッファをクリアし候補ウィンドウを非表示にする。
+以前は `OnSetFocus` が空実装だったため、フォーカス移動後も候補ウィンドウが残っていた。
+
+### 確定・キャンセル時
+
+以下のすべての確定パスに `candidate_window.hide()` を追加:
+
+| パス | キー/条件 |
+|------|----------|
+| 確定 | Enter |
+| キャンセル | Escape |
+| 修飾キー自動確定 | Ctrl+X / Alt+X など |
+| 未対応キー自動確定 | ハングルキー以外 |
+
+### 変更ファイル
+
+| ファイル | 変更内容 |
+|---------|---------|
+| `src/tsf/text_service.rs` | `OnSetFocus(FALSE)` 実装、全確定パスに `candidate_window.hide()` 追加 |
+
+---
+
+## v0.6.5 インストーラーアップグレード改善
+
+### 課題
+
+IMEのDLLはWindowsが常にロードしているため、上書きインストールが失敗する。
+再起動を要求せずにアップグレードする方法が必要。
+
+### リネーム方式
+
+Windowsではロック中のファイルのリネームは成功する。この特性を利用して再起動不要のアップグレードを実現。
+
+### アップグレードフロー
+
+```
+PrepareToInstall:
+  1. 前回の .old ファイルを削除 (残っていれば)
+  2. 旧DLLのTSF登録を解除 (regsvr32 /u)
+  3. 旧DLLを chamsae.dll.old にリネーム (ロック中でも成功)
+
+[Files] セクション:
+  4. 新DLLを chamsae.dll として配置
+
+[Run] セクション:
+  5. 新DLLをTSF登録 (regsvr32)
+
+CurStepChanged(ssPostInstall):
+  6. .old ファイルの削除を試みる (ロック中なら次回インストール時に削除)
+```
+
+### アンインストールフロー
+
+```
+[UninstallRun]:
+  1. regsvr32 /u chamsae.dll (TSF登録解除)
+
+[Files] 自動削除:
+  2. インストール済みファイルを削除
+```
+
+### InnoSetup [Code] セクション
+
+```pascal
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+  // .old 削除 → regsvr32 /u → リネーム
+
+procedure CurStepChanged(CurStep: TSetupStep);
+  // ssPostInstall: .old 削除試行
+```
+
+### 変更ファイル
+
+| ファイル | 変更内容 |
+|---------|---------|
+| `installer/chamsae.iss` | `[Code]` セクション追加 (PrepareToInstall, CurStepChanged) |
+
+---
+
 ## 未実装 (Phase 7へ移行)
 
 | 項目 | 内容 |
