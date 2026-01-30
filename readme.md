@@ -4,6 +4,20 @@
 
 Rust学習を兼ねた自作IMEプロジェクト。
 
+## インストール
+
+1. [最新リリース](https://github.com/hatolife/chamsae/releases/latest) からzipファイルをダウンロード
+2. zipを展開し、任意のフォルダに配置（例: `C:\Program Files\Chamsae\`）
+3. `chamsae.json` を必要に応じて編集（トグルキーや言語プロファイルの設定）
+4. `install.bat` をダブルクリックして実行（UAC昇格ダイアログが表示される）
+
+登録後、Windowsの「設定 > 時刻と言語 > 言語と地域」で「Chamsae Hangul IME」が表示される。
+
+## アンインストール
+
+1. `uninstall.bat` をダブルクリックして実行（UAC昇格ダイアログが表示される）
+2. 配置したフォルダを削除
+
 ## 現在のステータス
 
 | 項目 | 状態 |
@@ -161,8 +175,8 @@ build/
 ├── chamsae.exe                         # CLIツール
 ├── chamsae.dll                         # IME DLL
 ├── chamsae.json                        # 設定ファイル (テンプレート自動生成)
-├── register_chamsae_keyboard.bat       # IME登録バッチ
-└── unregister_chamsae_keyboard.bat     # IME登録解除バッチ
+├── install.bat       # IME登録バッチ
+└── uninstall.bat     # IME登録解除バッチ
 ```
 
 この `build/` フォルダをWindows環境にコピーすればすぐに使える。
@@ -183,8 +197,8 @@ chamsae/
 │   ├── chamsae.exe
 │   ├── chamsae.dll
 │   ├── chamsae.json
-│   ├── register_chamsae_keyboard.bat
-│   └── unregister_chamsae_keyboard.bat
+│   ├── install.bat
+│   └── uninstall.bat
 └── src/
     ├── lib.rs             # ライブラリルート + DLLエクスポート
     ├── hangul.rs          # 変換ロジック + テスト
@@ -192,8 +206,8 @@ chamsae/
     ├── guid.rs            # GUID/CLSID定義
     ├── registry.rs        # レジストリ登録 + TSF登録
     ├── bat/
-    │   ├── register_chamsae_keyboard.bat     # IME登録 (UAC自動昇格)
-    │   └── unregister_chamsae_keyboard.bat   # IME登録解除 (UAC自動昇格)
+    │   ├── install.bat     # IME登録 (UAC自動昇格)
+    │   └── uninstall.bat   # IME登録解除 (UAC自動昇格)
     ├── com/
     │   ├── mod.rs         # COMモジュール
     │   ├── class_factory.rs   # IClassFactory実装
@@ -250,8 +264,8 @@ make release
 
 | バッチファイル | 説明 |
 |---------------|------|
-| `register_chamsae_keyboard.bat` | `regsvr32 chamsae.dll` を実行してIMEを登録 |
-| `unregister_chamsae_keyboard.bat` | `regsvr32 /u chamsae.dll` を実行してIME登録を解除 |
+| `install.bat` | `regsvr32 chamsae.dll` を実行してIMEを登録 |
+| `uninstall.bat` | `regsvr32 /u chamsae.dll` を実行してIME登録を解除 |
 
 手動で実行する場合 (**管理者権限のコマンドプロンプト**):
 
