@@ -1,3 +1,4 @@
+#![cfg_attr(windows, windows_subsystem = "windows")]
 //! Chamsae IME 設定画面。
 //!
 //! Win32ダイアログベースの設定GUI。
@@ -272,6 +273,10 @@ fn run_settings() -> anyhow::Result<()> {
                     }
                     _ => DefWindowProcW(hwnd, msg, wparam, lparam),
                 }
+            }
+            WM_CTLCOLORSTATIC | WM_CTLCOLORBTN => {
+                // 子コントロールの背景色をウィンドウ背景と統一。
+                LRESULT(GetStockObject(WHITE_BRUSH).0 as isize)
             }
             WM_DESTROY => {
                 PostQuitMessage(0);
